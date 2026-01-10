@@ -2,7 +2,7 @@ import 'package:busic/network/request.dart';
 import 'package:busic/pages/music_list_page.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
-import './network/test.dart';
+// import './network/test.dart';
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();

@@ -1,9 +1,10 @@
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import '../models/music_list_item.dart';
 import '../providers/music_list_provider.dart';
 import '../network/video_url_ret.dart';
 
 /// 初始化示例音乐数据
-void initSampleMusicList(WidgetRef ref) {
+Future<void> initSampleMusicList(WidgetRef ref) async {
   final musicList = [
     MusicListItemBv(
       bvid: 'BV1xx411c7XD',
@@ -63,5 +64,5 @@ void initSampleMusicList(WidgetRef ref) {
     ),
   ];
 
-  ref.read(musicListProvider.notifier).setList(musicList);
+  await ref.read(musicListProvider.notifier).setList(musicList);
 }

@@ -1,10 +1,10 @@
 import 'dart:convert';
 
 class VideoUrlRet {
-  int code;
-  String message;
-  int ttl;
-  Data data;
+  final int code;
+  final String message;
+  final int ttl;
+  final Data data;
 
   VideoUrlRet({
     required this.code,

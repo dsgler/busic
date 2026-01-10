@@ -1,0 +1,193 @@
+// Drift ORM 使用示例
+
+import 'package:flutter/material.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:busic/models/music_list_item.dart';
+import 'package:busic/providers/music_list_provider.dart';
+import 'package:busic/providers/music_database.dart';
+
+/// 示例 1: 基本的 CRUD 操作
+void exampleBasicCRUD(WidgetRef ref) async {
+  final notifier = ref.read(musicListProvider.notifier);
+
+  // 添加音乐
+  await notifier.addMusic(
+    MusicListItemBv(
+      bvid: 'BV1234567890',
+      cid: 1,
+      title: '示例音乐',
+      artist: '示例艺术家',
+      audioObj: Audio(/* ... */),
+    ),
+  );
+
+  // 删除音乐（通过索引）
+  await notifier.removeMusic(0);
+
+  // 清空列表
+  await notifier.clearList();
+}
+
+/// 示例 2: 直接使用 Drift 数据库
+void exampleDirectDatabaseAccess() async {
+  final db = MusicDatabase();
+
+  // 查询音乐列表
+  final musicList = await db.getMusicList('music_list');
+  print('找到 ${musicList.length} 首音乐');
+
+  // 保存音乐列表
+  await db.saveMusicList('music_list', [MusicListItemBv(/* ... */)]);
+
+  // 删除特定 key 的数据
+  await db.deleteMusicList('music_list');
+
+  // 清空所有数据
+  await db.clearAll();
+
+  // 关闭数据库
+  await db.close();
+}
+
+/// 示例 3: 在 Widget 中使用
+class MusicListWidget extends ConsumerWidget {
+  const MusicListWidget({super.key});
+
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    // 监听音乐列表变化
+    final musicListAsync = ref.watch(musicListProvider);
+
+    return musicListAsync.when(
+      data: (musicList) {
+        if (musicList.isEmpty) {
+          return const Center(child: Text('暂无音乐'));
+        }
+
+        return ListView.builder(
+          itemCount: musicList.length,
+          itemBuilder: (context, index) {
+            final music = musicList[index];
+            return ListTile(
+              title: Text(music.title),
+              subtitle: Text(music.artist),
+              trailing: IconButton(
+                icon: const Icon(Icons.delete),
+                onPressed: () {
+                  // 删除音乐
+                  ref.read(musicListProvider.notifier).removeMusic(index);
+                },
+              ),
+            );
+          },
+        );
+      },
+      loading: () => const Center(child: CircularProgressIndicator()),
+      error: (error, stack) => Center(child: Text('加载失败: $error')),
+    );
+  }
+}
+
+/// 示例 4: 高级 Drift 查询（扩展功能）
+///
+/// 如果需要更复杂的查询，可以在 MusicDatabase 中添加方法：
+///
+/// ```dart
+/// // 在 music_database.dart 中添加：
+///
+/// /// 按标题搜索音乐
+/// Future<List<MusicListItemBv>> searchByTitle(String key, String keyword) async {
+///   final items = await (select(musicItems)
+///         ..where((tbl) => tbl.storageKey.equals(key))
+///         ..where((tbl) => tbl.title.like('%$keyword%'))
+///         ..orderBy([(t) => OrderingTerm.asc(t.title)]))
+///       .get();
+///
+///   return items.map((item) => _toMusicItem(item)).toList();
+/// }
+///
+/// /// 按艺术家筛选
+/// Future<List<MusicListItemBv>> filterByArtist(String key, String artist) async {
+///   final items = await (select(musicItems)
+///         ..where((tbl) => tbl.storageKey.equals(key))
+///         ..where((tbl) => tbl.artist.equals(artist)))
+///       .get();
+///
+///   return items.map((item) => _toMusicItem(item)).toList();
+/// }
+///
+/// /// 获取音乐总数
+/// Future<int> getMusicCount(String key) async {
+///   final count = await (selectOnly(musicItems)
+///         ..addColumns([musicItems.id.count()])
+///         ..where(musicItems.storageKey.equals(key)))
+///       .getSingleOrNull();
+///
+///   return count?.read(musicItems.id.count()) ?? 0;
+/// }
+///
+/// /// Stream: 实时监听音乐列表变化
+/// Stream<List<MusicListItemBv>> watchMusicList(String key) {
+///   return (select(musicItems)
+///         ..where((tbl) => tbl.storageKey.equals(key))
+///         ..orderBy([(t) => OrderingTerm.asc(t.id)]))
+///       .watch()
+///       .map((items) => items.map((item) => _toMusicItem(item)).toList());
+/// }
+/// ```
+
+/// 示例 5: 使用 Stream 实时更新
+class RealtimeMusicListWidget extends ConsumerWidget {
+  const RealtimeMusicListWidget({super.key});
+
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    final db = MusicDatabase();
+
+    return StreamBuilder<List<MusicListItemBv>>(
+      stream: db.watchMusicList('music_list'),
+      builder: (context, snapshot) {
+        if (!snapshot.hasData) {
+          return const Center(child: CircularProgressIndicator());
+        }
+
+        final musicList = snapshot.data!;
+        return ListView.builder(
+          itemCount: musicList.length,
+          itemBuilder: (context, index) {
+            final music = musicList[index];
+            return ListTile(
+              title: Text(music.title),
+              subtitle: Text(music.artist),
+            );
+          },
+        );
+      },
+    );
+  }
+}
+
+// 注意：需要在 MusicDatabase 中添加 watchMusicList 方法（见示例 4）
+extension MusicDatabaseExtension on MusicDatabase {
+  /// 实时监听音乐列表变化
+  Stream<List<MusicListItemBv>> watchMusicList(String key) {
+    return (select(musicItems)
+          ..where((tbl) => tbl.storageKey.equals(key))
+          ..orderBy([(t) => OrderingTerm.asc(t.id)]))
+        .watch()
+        .map((items) => items.map((item) => _toMusicItem(item)).toList());
+  }
+
+  MusicListItemBv _toMusicItem(MusicItem item) {
+    return MusicListItemBv(
+      bvid: item.bvid,
+      cid: item.cid,
+      title: item.title,
+      artist: item.artist,
+      coverUrl: item.coverUrl,
+      audioObj: Audio.fromJson(
+        jsonDecode(item.audioObjJson) as Map<String, dynamic>,
+      ),
+    );
+  }
+}

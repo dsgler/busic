@@ -1,71 +1,60 @@
-import 'package:busic/consts/network.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:flutter_riverpod/experimental/persist.dart';
+import '../models/music_list_item.dart';
+import 'music_list_storage.dart';
 import 'package:flutter_riverpod/legacy.dart';
 
-import '../network/video_url_ret.dart';
-import 'package:just_audio/just_audio.dart';
+// 音乐列表 AsyncNotifier（支持持久化）
+class MusicListNotifier extends AsyncNotifier<List<MusicListItemBv>> {
+  @override
+  Future<List<MusicListItemBv>> build() async {
+    // 配置持久化 - 使用自定义的 MusicListStorage
+    await persist(
+      // 使用专门为音乐列表创建的 Storage
+      ref.watch(musicListStorageProvider.future),
+      // 唯一标识符
+      key: 'music_list',
+      // Storage 已经处理序列化，这里直接返回
+      encode: (data) => data,
+      decode: (data) => data,
+      // 持久化选项：永久保存（适用于音乐列表）
+      options: const StorageOptions(cacheTime: StorageCacheTime.unsafe_forever),
+    ).future;
 
-class MusicListItemBv {
-  final String bvid;
-  final int cid;
-  final String title;
-  final String artist;
-  final String? coverUrl;
-  Audio audioObj;
-
-  MusicListItemBv({
-    required this.bvid,
-    this.cid = 0,
-    required this.audioObj,
-    required this.title,
-    this.artist = '未知艺术家',
-    this.coverUrl,
-  });
-
-  Future<AudioPlayer> generatePlayer() async {
-    final player = AudioPlayer();
-    await player.setUrl(
-      audioObj.baseUrl,
-      headers: {
-        'User-Agent': ua,
-        'referer': referer,
-        // 'Cookie': cookieJar.
-      },
-    );
-
-    return player;
+    // 如果有持久化的数据，返回它；否则返回空列表
+    return state.value ?? [];
   }
-}
-
-// 音乐列表 StateNotifier
-class MusicListNotifier extends StateNotifier<List<MusicListItemBv>> {
-  MusicListNotifier() : super([]);
 
   // 添加音乐到列表
-  void addMusic(MusicListItemBv music) {
-    state = [...state, music];
+  Future<void> addMusic(MusicListItemBv music) async {
+    state = AsyncValue.data([...state.value!, music]);
   }
 
   // 删除音乐
-  void removeMusic(int index) {
-    state = [...state.sublist(0, index), ...state.sublist(index + 1)];
+  Future<void> removeMusic(int index) async {
+    final currentList = state.value!;
+    state = AsyncValue.data([
+      ...currentList.sublist(0, index),
+      ...currentList.sublist(index + 1),
+    ]);
   }
 
   // 清空列表
-  void clearList() {
-    state = [];
+  Future<void> clearList() async {
+    state = const AsyncValue.data([]);
   }
 
   // 设置整个列表
-  void setList(List<MusicListItemBv> list) {
-    state = list;
+  Future<void> setList(List<MusicListItemBv> list) async {
+    state = AsyncValue.data(list);
   }
 }
 
 // 音乐列表 Provider
 final musicListProvider =
-    StateNotifierProvider<MusicListNotifier, List<MusicListItemBv>>((ref) {
-      return MusicListNotifier();
-    });
+    AsyncNotifierProvider<MusicListNotifier, List<MusicListItemBv>>(
+      MusicListNotifier.new,
+    );
 
 // 当前播放的音乐索引 Provider
 final currentPlayingIndexProvider = StateProvider<int?>((ref) => null);

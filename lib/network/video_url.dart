@@ -1,7 +1,9 @@
+import 'package:busic/network/video_url_ret.dart';
+
 import './request.dart';
 import './wbi.dart';
 
-Future<dynamic> getVideoUrl({required String bvid, int? cid = 0}) async {
+Future<VideoUrlRet> getVideoUrl({required String bvid, int? cid = 0}) async {
   final data1 = WbiUtils.generateWbiSign({
     'bvid': bvid,
     'cid': cid,
@@ -12,9 +14,11 @@ Future<dynamic> getVideoUrl({required String bvid, int? cid = 0}) async {
     'https://api.bilibili.com/x/player/wbi/playurl',
     queryParameters: data1,
   );
-  if (ret.data['code'] != 0) {
-    throw ret.data['message'];
+  final data = VideoUrlRet.fromJson(ret.data);
+
+  if (data.code != 0) {
+    throw data.message;
   }
 
-  return ret.data;
+  return data;
 }

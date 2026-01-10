@@ -2,7 +2,7 @@ import 'dart:convert';
 
 import 'package:flutter/material.dart';
 
-import 'get_video_url.dart';
+import 'video_url.dart';
 
 void test() async {
   var ret = await getVideoUrl(bvid: 'BV1nkimBdEaj', cid: 35249717992);
