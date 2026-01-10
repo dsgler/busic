@@ -4,6 +4,7 @@ import '../models/music_list_item.dart';
 import '../providers/music_list_provider.dart';
 import '../providers/audio_player_provider.dart';
 import 'play_page.dart';
+import 'package:cached_network_image/cached_network_image.dart';
 
 class MusicListPage extends ConsumerWidget {
   const MusicListPage({super.key});
@@ -117,10 +118,10 @@ class MusicListPage extends ConsumerWidget {
                             child: music.coverUrl != null
                                 ? ClipRRect(
                                     borderRadius: BorderRadius.circular(8),
-                                    child: Image.network(
-                                      music.coverUrl!,
+                                    child: CachedNetworkImage(
+                                      imageUrl: music.coverUrl!,
                                       fit: BoxFit.cover,
-                                      errorBuilder:
+                                      errorWidget:
                                           (context, error, stackTrace) {
                                             return Icon(
                                               Icons.music_note,
@@ -329,10 +330,10 @@ class _MusicControlBar extends ConsumerWidget {
                     child: music.coverUrl != null
                         ? ClipRRect(
                             borderRadius: BorderRadius.circular(8),
-                            child: Image.network(
-                              music.coverUrl!,
+                            child: CachedNetworkImage(
+                              imageUrl: music.coverUrl!,
                               fit: BoxFit.cover,
-                              errorBuilder: (context, error, stackTrace) {
+                              errorWidget: (context, error, stackTrace) {
                                 return Icon(
                                   Icons.music_note,
                                   color: Colors.grey[600],

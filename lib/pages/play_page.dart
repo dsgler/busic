@@ -1,4 +1,5 @@
 import 'package:busic/providers/music_list_provider.dart';
+import 'package:cached_network_image/cached_network_image.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../providers/audio_player_provider.dart';
@@ -56,10 +57,10 @@ class PlayPage extends ConsumerWidget {
                   child: isLoaded && music!.coverUrl != null
                       ? ClipRRect(
                           borderRadius: BorderRadius.circular(8),
-                          child: Image.network(
-                            music.coverUrl!,
+                          child: CachedNetworkImage(
+                            imageUrl: music.coverUrl!,
                             fit: BoxFit.cover,
-                            errorBuilder: (context, error, stackTrace) {
+                            errorWidget: (context, error, stackTrace) {
                               return Icon(
                                 Icons.music_note,
                                 color: Colors.grey[600],

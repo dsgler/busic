@@ -47,6 +47,7 @@ dependencies:
   path: ^1.9.1
   drift: ^2.23.0
   sqlite3_flutter_libs: ^0.5.24
+  cached_network_image: ^3.4.1
 
 dev_dependencies:
   flutter_test:
