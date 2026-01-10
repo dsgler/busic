@@ -64,8 +64,7 @@ final class _DriftStorageWrapper
     final results = await _driftStorage.read(key);
     if (results == null) return null;
 
-    // PersistedData 是 (T, DateTime) 的 record 类型别名
-    return (results, DateTime.now()) as PersistedData<List<MusicListItemBv>>;
+    return PersistedData(results);
   }
 
   @override

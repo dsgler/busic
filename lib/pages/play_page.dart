@@ -1,3 +1,4 @@
+import 'package:busic/providers/music_list_provider.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../providers/audio_player_provider.dart';
@@ -12,6 +13,15 @@ class PlayPage extends ConsumerWidget {
     final position = ref.watch(positionProvider);
     final bufferedPosition = ref.watch(bufferedPositionProvider);
     final duration = ref.watch(durationProvider);
+
+    final musicListAsync = ref.watch(musicListProvider);
+    final currentPlayingIndex = ref.watch(currentPlayingIndexProvider);
+
+    final musicList = musicListAsync.hasValue
+        ? musicListAsync.requireValue
+        : null;
+    final isLoaded = currentPlayingIndex != null && musicList != null;
+    final music = isLoaded ? musicList[currentPlayingIndex] : null;
 
     return Scaffold(
       appBar: AppBar(
@@ -43,11 +53,25 @@ class PlayPage extends ConsumerWidget {
                 ),
                 child: ClipRRect(
                   borderRadius: BorderRadius.circular(20),
-                  child: Icon(
-                    Icons.music_note,
-                    size: 120,
-                    color: Colors.grey[600],
-                  ),
+                  child: isLoaded && music!.coverUrl != null
+                      ? ClipRRect(
+                          borderRadius: BorderRadius.circular(8),
+                          child: Image.network(
+                            music.coverUrl!,
+                            fit: BoxFit.cover,
+                            errorBuilder: (context, error, stackTrace) {
+                              return Icon(
+                                Icons.music_note,
+                                color: Colors.grey[600],
+                              );
+                            },
+                          ),
+                        )
+                      : Icon(
+                          Icons.music_note,
+                          size: 120,
+                          color: Colors.grey[600],
+                        ),
                 ),
               ),
             ),
@@ -62,7 +86,7 @@ class PlayPage extends ConsumerWidget {
             child: Column(
               children: [
                 Text(
-                  '歌曲标题',
+                  music?.title ?? "歌曲标题",
                   style: Theme.of(context).textTheme.headlineSmall?.copyWith(
                     fontWeight: FontWeight.bold,
                   ),
@@ -70,7 +94,7 @@ class PlayPage extends ConsumerWidget {
                 ),
                 const SizedBox(height: 8),
                 Text(
-                  '艺术家',
+                  music?.artist ?? '艺术家',
                   style: Theme.of(
                     context,
                   ).textTheme.bodyLarge?.copyWith(color: Colors.grey[600]),
