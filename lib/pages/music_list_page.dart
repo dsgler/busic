@@ -16,6 +16,7 @@ class MusicListPage extends ConsumerWidget {
     final musicListAsync = ref.watch(musicListProvider);
     final currentPlayingIndex = ref.watch(currentPlayingIndexProvider);
     final playingState = ref.watch(playingStateProvider);
+
     onTapAdd() async {
       final controller = TextEditingController();
 

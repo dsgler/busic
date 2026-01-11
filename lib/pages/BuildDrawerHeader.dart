@@ -1,3 +1,4 @@
+import 'package:busic/models/user_info.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../providers/user_info_provider.dart';
@@ -5,7 +6,11 @@ import 'user_info_page.dart';
 import 'package:cached_network_image/cached_network_image.dart';
 
 Widget BuildDrawerHeader(BuildContext context, WidgetRef ref) {
-  final userInfo = ref.watch(userInfoProvider);
+  final userInfoAsync = ref.watch(userInfoProvider);
+  final userInfo = switch (userInfoAsync) {
+    AsyncValue(:final value, hasValue: true) => value!,
+    _ => UserInfo.guest(),
+  };
 
   return UserAccountsDrawerHeader(
     decoration: BoxDecoration(

@@ -1,6 +1,7 @@
 import 'package:busic/models/nav_ret.dart';
 import 'package:busic/models/request_qr_ret.dart';
 import 'package:busic/models/request_signin_ret.dart';
+import 'package:busic/models/user_info.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:cached_network_image/cached_network_image.dart';
@@ -14,7 +15,11 @@ class UserInfoPage extends ConsumerWidget {
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
-    final userInfo = ref.watch(userInfoProvider);
+    final userInfoAsync = ref.watch(userInfoProvider);
+    final userInfo = switch (userInfoAsync) {
+      AsyncValue(:final value, hasValue: true) => value!,
+      _ => UserInfo.guest(),
+    };
 
     return Scaffold(
       appBar: AppBar(

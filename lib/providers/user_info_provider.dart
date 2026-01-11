@@ -1,44 +1,32 @@
+import 'package:busic/network/request.dart';
+import 'package:busic/providers/storage_provider.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import '../models/user_info.dart';
+import 'package:flutter_riverpod/experimental/persist.dart';
 
 /// 用户信息持久化 key
-const String _userInfoKey = 'user_info';
+const String _userInfoKey = 'user_info1834';
 
 /// 用户信息 Notifier
-class UserInfoNotifier extends Notifier<UserInfo> {
+class UserInfoNotifier extends AsyncNotifier<UserInfo> {
   UserInfoNotifier();
 
   @override
-  UserInfo build() {
-    _loadUserInfo();
-    return UserInfo.guest();
-  }
+  Future<UserInfo> build() async {
+    await persist(
+      ref.watch(storageProvider.future),
+      key: _userInfoKey,
+      encode: (state) {
+        return state.toJsonString();
+      },
+      decode: (jsonString) {
+        return UserInfo.fromJsonString(jsonString);
+      },
+      options: StorageOptions(cacheTime: StorageCacheTime.unsafe_forever),
+    ).future;
 
-  /// 从本地加载用户信息
-  Future<void> _loadUserInfo() async {
-    final prefs = ref.read(sharedPreferencesProvider);
-
-    try {
-      final jsonString = prefs.getString(_userInfoKey);
-      if (jsonString != null && jsonString.isNotEmpty) {
-        state = UserInfo.fromJsonString(jsonString);
-      }
-    } catch (e) {
-      print('加载用户信息失败: $e');
-      state = UserInfo.guest();
-    }
-  }
-
-  /// 保存用户信息到本地
-  Future<void> _saveUserInfo() async {
-    final prefs = ref.read(sharedPreferencesProvider);
-
-    try {
-      await prefs.setString(_userInfoKey, state.toJsonString());
-    } catch (e) {
-      print('保存用户信息失败: $e');
-    }
+    return state.hasValue ? state.requireValue : UserInfo.guest();
   }
 
   /// 更新用户信息
@@ -47,12 +35,13 @@ class UserInfoNotifier extends Notifier<UserInfo> {
     String? avatarUrl,
     bool? isLoggedIn,
   }) async {
-    state = state.copyWith(
-      username: username,
-      avatarUrl: avatarUrl,
-      isLoggedIn: isLoggedIn,
+    state = AsyncData(
+      state.requireValue.copyWith(
+        username: username,
+        avatarUrl: avatarUrl,
+        isLoggedIn: isLoggedIn,
+      ),
     );
-    await _saveUserInfo();
   }
 
   /// 设置用户登录状态
@@ -60,25 +49,15 @@ class UserInfoNotifier extends Notifier<UserInfo> {
     required String username,
     required String avatarUrl,
   }) async {
-    state = UserInfo(
-      username: username,
-      avatarUrl: avatarUrl,
-      isLoggedIn: true,
+    state = AsyncData(
+      UserInfo(username: username, avatarUrl: avatarUrl, isLoggedIn: true),
     );
-    await _saveUserInfo();
   }
 
   /// 退出登录
   Future<void> logout() async {
-    final prefs = ref.read(sharedPreferencesProvider);
-
-    state = UserInfo.guest();
-    await prefs.remove(_userInfoKey);
-  }
-
-  /// 重新加载用户信息
-  Future<void> reload() async {
-    await _loadUserInfo();
+    state = AsyncData(UserInfo.guest());
+    cookieJar.deleteAll();
   }
 }
 
@@ -88,6 +67,6 @@ final sharedPreferencesProvider = Provider<SharedPreferences>((ref) {
 });
 
 /// 用户信息 Provider
-final userInfoProvider = NotifierProvider<UserInfoNotifier, UserInfo>(() {
+final userInfoProvider = AsyncNotifierProvider<UserInfoNotifier, UserInfo>(() {
   return UserInfoNotifier();
 });
