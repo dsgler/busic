@@ -18,7 +18,7 @@ class AudioPlayerManager extends StateNotifier<AudioPlayer?> {
   }
 
   // 设置新的播放器并关闭旧的
-  Future<void> setPlayer(AudioPlayer newPlayer) async {
+  Future<void> setPlayer(AudioPlayer? newPlayer) async {
     // 停止并释放旧的播放器
     if (state != null) {
       await state!.stop();
@@ -26,6 +26,7 @@ class AudioPlayerManager extends StateNotifier<AudioPlayer?> {
     }
     // 设置新的播放器
     state = newPlayer;
+    newPlayer?.play();
   }
 
   // 获取当前播放器
@@ -43,11 +44,6 @@ final audioPlayerManagerProvider =
     StateNotifierProvider<AudioPlayerManager, AudioPlayer?>((ref) {
       return AudioPlayerManager();
     });
-
-// AudioPlayer 实例的 Provider（为了兼容性保留）
-final audioPlayerProvider = Provider<AudioPlayer?>((ref) {
-  return ref.watch(audioPlayerManagerProvider);
-});
 
 // 播放状态 Provider
 final playingStateProvider = StreamProvider<bool>((ref) {
@@ -93,3 +89,12 @@ final playerStateProvider = StreamProvider<PlayerState>((ref) {
   }
   return player.playerStateStream;
 });
+
+// 播放模式枚举
+enum PlayMode {
+  sequential, // 顺序播放
+  random, // 随机播放
+}
+
+// 播放模式 Provider
+final playModeProvider = StateProvider<PlayMode>((ref) => PlayMode.sequential);

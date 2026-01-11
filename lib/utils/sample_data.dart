@@ -1,7 +1,7 @@
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../models/music_list_item.dart';
 import '../providers/music_list_provider.dart';
-import '../network/video_url_ret.dart';
+import '../models/video_url_ret.dart';
 
 /// 初始化示例音乐数据
 Future<void> initSampleMusicList(WidgetRef ref) async {

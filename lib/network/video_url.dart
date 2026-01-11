@@ -1,4 +1,4 @@
-import 'package:busic/network/video_url_ret.dart';
+import 'package:busic/models/video_url_ret.dart';
 
 import './request.dart';
 import './wbi.dart';

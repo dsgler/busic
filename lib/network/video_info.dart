@@ -1,4 +1,4 @@
-import 'package:busic/network/video_info_ret.dart';
+import 'package:busic/models/video_info_ret.dart';
 
 import './request.dart';
 

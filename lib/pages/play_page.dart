@@ -9,7 +9,7 @@ class PlayPage extends ConsumerWidget {
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
-    final player = ref.watch(audioPlayerProvider);
+    final player = ref.watch(audioPlayerManagerProvider);
     final playingState = ref.watch(playingStateProvider);
     final position = ref.watch(positionProvider);
     final bufferedPosition = ref.watch(bufferedPositionProvider);
@@ -17,6 +17,7 @@ class PlayPage extends ConsumerWidget {
 
     final musicListAsync = ref.watch(musicListProvider);
     final currentPlayingIndex = ref.watch(currentPlayingIndexProvider);
+    final playMode = ref.watch(playModeProvider);
 
     final musicList = musicListAsync.hasValue
         ? musicListAsync.requireValue
@@ -163,10 +164,25 @@ class PlayPage extends ConsumerWidget {
             child: Row(
               mainAxisAlignment: MainAxisAlignment.spaceEvenly,
               children: [
+                // 播放模式按钮
+                IconButton(
+                  onPressed: () {
+                    togglePlayMode(ref);
+                  },
+                  icon: Icon(
+                    playMode == PlayMode.sequential
+                        ? Icons.repeat
+                        : Icons.shuffle,
+                  ),
+                  iconSize: 32,
+                  color: Theme.of(context).colorScheme.primary,
+                  tooltip: playMode == PlayMode.sequential ? '顺序播放' : '随机播放',
+                ),
+
                 // 上一曲按钮
                 IconButton(
                   onPressed: () {
-                    // TODO: 实现上一曲逻辑
+                    playPrevious(ref);
                   },
                   icon: const Icon(Icons.skip_previous),
                   iconSize: 48,
@@ -217,12 +233,15 @@ class PlayPage extends ConsumerWidget {
                 // 下一曲按钮
                 IconButton(
                   onPressed: () {
-                    // TODO: 实现下一曲逻辑
+                    playNext(ref);
                   },
                   icon: const Icon(Icons.skip_next),
                   iconSize: 48,
                   color: Theme.of(context).colorScheme.primary,
                 ),
+
+                // 占位，保持对称
+                const SizedBox(width: 32),
               ],
             ),
           ),

@@ -4,7 +4,9 @@ import '../models/music_list_item.dart';
 import '../providers/music_list_provider.dart';
 import '../providers/audio_player_provider.dart';
 import 'play_page.dart';
+import 'user_info_page.dart';
 import 'package:cached_network_image/cached_network_image.dart';
+import './BuildDrawerHeader.dart';
 
 class MusicListPage extends ConsumerWidget {
   const MusicListPage({super.key});
@@ -69,6 +71,45 @@ class MusicListPage extends ConsumerWidget {
             },
           ),
         ],
+      ),
+      drawer: Drawer(
+        child: ListView(
+          padding: EdgeInsets.zero,
+          children: [
+            BuildDrawerHeader(context, ref),
+            ListTile(
+              leading: const Icon(Icons.person),
+              title: const Text('用户信息'),
+              onTap: () {
+                Navigator.pop(context);
+                Navigator.push(
+                  context,
+                  MaterialPageRoute(builder: (context) => const UserInfoPage()),
+                );
+              },
+            ),
+            const Divider(),
+            ListTile(
+              leading: const Icon(Icons.music_note),
+              title: const Text('我的音乐'),
+              onTap: () {
+                Navigator.pop(context);
+              },
+            ),
+            const Divider(),
+            ListTile(
+              leading: const Icon(Icons.settings),
+              title: const Text('设置'),
+              onTap: () {
+                Navigator.pop(context);
+                // TODO: 跳转到设置页面
+                ScaffoldMessenger.of(
+                  context,
+                ).showSnackBar(const SnackBar(content: Text('设置功能待开发')));
+              },
+            ),
+          ],
+        ),
       ),
       body: Column(
         children: [
@@ -173,28 +214,8 @@ class MusicListPage extends ConsumerWidget {
 
                             // 设置当前播放的音乐索引
                             ref
-                                    .read(currentPlayingIndexProvider.notifier)
-                                    .state =
-                                index;
-
-                            // 使用 generatePlayer 创建新的播放器并关闭旧的
-                            final newPlayer = await music.generatePlayer();
-                            await ref
-                                .read(audioPlayerManagerProvider.notifier)
-                                .setPlayer(newPlayer);
-
-                            // 开始播放
-                            await newPlayer.play();
-
-                            // 导航到播放页面
-                            // if (context.mounted) {
-                            //   Navigator.push(
-                            //     context,
-                            //     MaterialPageRoute(
-                            //       builder: (context) => const PlayPage(),
-                            //     ),
-                            //   );
-                            // }
+                                .read(currentPlayingIndexProvider.notifier)
+                                .setIndex(index);
                           },
                         );
                       },
@@ -270,7 +291,7 @@ class _MusicControlBar extends ConsumerWidget {
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
-    final player = ref.watch(audioPlayerProvider);
+    final player = ref.watch(audioPlayerManagerProvider);
     final playingState = ref.watch(playingStateProvider);
     final position = ref.watch(positionProvider);
     final duration = ref.watch(durationProvider);
@@ -409,7 +430,7 @@ class _MusicControlBar extends ConsumerWidget {
                   IconButton(
                     icon: const Icon(Icons.skip_next, size: 32),
                     onPressed: () {
-                      // TODO: 实现下一首功能
+                      playNext(ref);
                     },
                   ),
                 ],
@@ -420,4 +441,6 @@ class _MusicControlBar extends ConsumerWidget {
       ),
     );
   }
+
+  /// 构建 Drawer Header
 }

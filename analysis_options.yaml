@@ -30,6 +30,7 @@ linter:
 analyzer:
   errors:
     non_constant_identifier_names: ignore
+    file_names: ignore
   plugins:
     - riverpod_lint
 

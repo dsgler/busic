@@ -2,7 +2,8 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_riverpod/experimental/persist.dart';
 import '../models/music_list_item.dart';
 import 'music_list_storage.dart';
-import 'package:flutter_riverpod/legacy.dart';
+import 'audio_player_provider.dart';
+import 'dart:math';
 
 // 音乐列表 AsyncNotifier（支持持久化）
 class MusicListNotifier extends AsyncNotifier<List<MusicListItemBv>> {
@@ -56,5 +57,108 @@ final musicListProvider =
       MusicListNotifier.new,
     );
 
-// 当前播放的音乐索引 Provider
-final currentPlayingIndexProvider = StateProvider<int?>((ref) => null);
+class CurrentPlayingIndexNotifier extends Notifier<int?> {
+  @override
+  int? build() {
+    return null;
+  }
+
+  void setIndex(int? i) async {
+    if (stateOrNull == i) {
+      ref.read(audioPlayerManagerProvider)?.seek(null);
+      return;
+    }
+
+    state = i;
+    ref.read(audioPlayerManagerProvider.notifier).setPlayer(null);
+
+    final musicListAsync = ref.read(musicListProvider);
+    musicListAsync.whenData((musicList) async {
+      ref
+          .read(audioPlayerManagerProvider.notifier)
+          .setPlayer(await musicList[i!].generatePlayer());
+    });
+  }
+}
+
+final currentPlayingIndexProvider =
+    NotifierProvider<CurrentPlayingIndexNotifier, int?>(
+      CurrentPlayingIndexNotifier.new,
+    );
+
+// 播放下一首
+void playNext(WidgetRef ref) {
+  final musicListAsync = ref.read(musicListProvider);
+  final currentIndex = ref.read(currentPlayingIndexProvider);
+  final playMode = ref.read(playModeProvider);
+
+  if (!musicListAsync.hasValue || musicListAsync.value!.isEmpty) {
+    return;
+  }
+
+  final musicList = musicListAsync.value!;
+  final listLength = musicList.length;
+
+  int? nextIndex;
+
+  if (playMode == PlayMode.random) {
+    // 随机播放模式
+    final random = Random();
+    // 生成一个与当前索引不同的随机索引
+    do {
+      nextIndex = random.nextInt(listLength);
+    } while (nextIndex == currentIndex && listLength > 1);
+  } else {
+    // 顺序播放模式
+    if (currentIndex == null) {
+      nextIndex = 0;
+    } else {
+      nextIndex = (currentIndex + 1) % listLength;
+    }
+  }
+
+  ref.read(currentPlayingIndexProvider.notifier).setIndex(nextIndex);
+}
+
+// 播放上一首
+void playPrevious(WidgetRef ref) {
+  final musicListAsync = ref.read(musicListProvider);
+  final currentIndex = ref.read(currentPlayingIndexProvider);
+  final playMode = ref.read(playModeProvider);
+
+  if (!musicListAsync.hasValue || musicListAsync.value!.isEmpty) {
+    return;
+  }
+
+  final musicList = musicListAsync.value!;
+  final listLength = musicList.length;
+
+  int? prevIndex;
+
+  if (playMode == PlayMode.random) {
+    // 随机播放模式
+    final random = Random();
+    // 生成一个与当前索引不同的随机索引
+    do {
+      prevIndex = random.nextInt(listLength);
+    } while (prevIndex == currentIndex && listLength > 1);
+  } else {
+    // 顺序播放模式
+    if (currentIndex == null) {
+      prevIndex = 0;
+    } else {
+      prevIndex = (currentIndex - 1 + listLength) % listLength;
+    }
+  }
+
+  ref.read(currentPlayingIndexProvider.notifier).setIndex(prevIndex);
+}
+
+// 切换播放模式
+void togglePlayMode(WidgetRef ref) {
+  final currentMode = ref.read(playModeProvider);
+  final newMode = currentMode == PlayMode.sequential
+      ? PlayMode.random
+      : PlayMode.sequential;
+  ref.read(playModeProvider.notifier).state = newMode;
+}

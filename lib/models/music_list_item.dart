@@ -5,7 +5,7 @@ import 'package:busic/network/video_info.dart';
 import 'package:busic/network/video_url.dart';
 import 'package:path/path.dart';
 import 'package:path_provider/path_provider.dart';
-import '../network/video_url_ret.dart';
+import 'video_url_ret.dart';
 import 'package:just_audio/just_audio.dart';
 
 class MusicListItemBv {
