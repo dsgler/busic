@@ -17,7 +17,7 @@ class PlayPage extends ConsumerWidget {
 
     final musicListAsync = ref.watch(musicListProvider);
     final currentPlayingIndex = ref.watch(currentPlayingIndexProvider);
-    final playMode = ref.watch(playModeProvider);
+    final playMode = ref.watch(playModeNotifierProvider);
 
     final musicList = musicListAsync.hasValue
         ? musicListAsync.requireValue
@@ -182,7 +182,9 @@ class PlayPage extends ConsumerWidget {
                 // 上一曲按钮
                 IconButton(
                   onPressed: () {
-                    playPrevious(ref);
+                    ref
+                        .read(currentPlayingIndexProvider.notifier)
+                        .playPrevious();
                   },
                   icon: const Icon(Icons.skip_previous),
                   iconSize: 48,
@@ -233,7 +235,7 @@ class PlayPage extends ConsumerWidget {
                 // 下一曲按钮
                 IconButton(
                   onPressed: () {
-                    playNext(ref);
+                    ref.read(currentPlayingIndexProvider.notifier).playNext();
                   },
                   icon: const Icon(Icons.skip_next),
                   iconSize: 48,

@@ -79,6 +79,74 @@ class CurrentPlayingIndexNotifier extends Notifier<int?> {
           .setPlayer(await musicList[i!].generatePlayer());
     });
   }
+
+  // 播放下一首
+  void playNext() {
+    final musicListAsync = ref.read(musicListProvider);
+    final currentIndex = state;
+    final playMode = ref.read(playModeNotifierProvider);
+
+    if (!musicListAsync.hasValue || musicListAsync.value!.isEmpty) {
+      return;
+    }
+
+    final musicList = musicListAsync.value!;
+    final listLength = musicList.length;
+
+    int? nextIndex;
+
+    if (playMode == PlayMode.random) {
+      // 随机播放模式
+      final random = Random();
+      // 生成一个与当前索引不同的随机索引
+      do {
+        nextIndex = random.nextInt(listLength);
+      } while (nextIndex == currentIndex && listLength > 1);
+    } else {
+      // 顺序播放模式
+      if (currentIndex == null) {
+        nextIndex = 0;
+      } else {
+        nextIndex = (currentIndex + 1) % listLength;
+      }
+    }
+
+    setIndex(nextIndex);
+  }
+
+  // 播放上一首
+  void playPrevious() {
+    final musicListAsync = ref.read(musicListProvider);
+    final currentIndex = state;
+    final playMode = ref.read(playModeNotifierProvider);
+
+    if (!musicListAsync.hasValue || musicListAsync.value!.isEmpty) {
+      return;
+    }
+
+    final musicList = musicListAsync.value!;
+    final listLength = musicList.length;
+
+    int? prevIndex;
+
+    if (playMode == PlayMode.random) {
+      // 随机播放模式
+      final random = Random();
+      // 生成一个与当前索引不同的随机索引
+      do {
+        prevIndex = random.nextInt(listLength);
+      } while (prevIndex == currentIndex && listLength > 1);
+    } else {
+      // 顺序播放模式
+      if (currentIndex == null) {
+        prevIndex = 0;
+      } else {
+        prevIndex = (currentIndex - 1 + listLength) % listLength;
+      }
+    }
+
+    setIndex(prevIndex);
+  }
 }
 
 final currentPlayingIndexProvider =
@@ -86,79 +154,11 @@ final currentPlayingIndexProvider =
       CurrentPlayingIndexNotifier.new,
     );
 
-// 播放下一首
-void playNext(WidgetRef ref) {
-  final musicListAsync = ref.read(musicListProvider);
-  final currentIndex = ref.read(currentPlayingIndexProvider);
-  final playMode = ref.read(playModeProvider);
-
-  if (!musicListAsync.hasValue || musicListAsync.value!.isEmpty) {
-    return;
-  }
-
-  final musicList = musicListAsync.value!;
-  final listLength = musicList.length;
-
-  int? nextIndex;
-
-  if (playMode == PlayMode.random) {
-    // 随机播放模式
-    final random = Random();
-    // 生成一个与当前索引不同的随机索引
-    do {
-      nextIndex = random.nextInt(listLength);
-    } while (nextIndex == currentIndex && listLength > 1);
-  } else {
-    // 顺序播放模式
-    if (currentIndex == null) {
-      nextIndex = 0;
-    } else {
-      nextIndex = (currentIndex + 1) % listLength;
-    }
-  }
-
-  ref.read(currentPlayingIndexProvider.notifier).setIndex(nextIndex);
-}
-
-// 播放上一首
-void playPrevious(WidgetRef ref) {
-  final musicListAsync = ref.read(musicListProvider);
-  final currentIndex = ref.read(currentPlayingIndexProvider);
-  final playMode = ref.read(playModeProvider);
-
-  if (!musicListAsync.hasValue || musicListAsync.value!.isEmpty) {
-    return;
-  }
-
-  final musicList = musicListAsync.value!;
-  final listLength = musicList.length;
-
-  int? prevIndex;
-
-  if (playMode == PlayMode.random) {
-    // 随机播放模式
-    final random = Random();
-    // 生成一个与当前索引不同的随机索引
-    do {
-      prevIndex = random.nextInt(listLength);
-    } while (prevIndex == currentIndex && listLength > 1);
-  } else {
-    // 顺序播放模式
-    if (currentIndex == null) {
-      prevIndex = 0;
-    } else {
-      prevIndex = (currentIndex - 1 + listLength) % listLength;
-    }
-  }
-
-  ref.read(currentPlayingIndexProvider.notifier).setIndex(prevIndex);
-}
-
 // 切换播放模式
 void togglePlayMode(WidgetRef ref) {
-  final currentMode = ref.read(playModeProvider);
+  final currentMode = ref.read(playModeNotifierProvider);
   final newMode = currentMode == PlayMode.sequential
       ? PlayMode.random
       : PlayMode.sequential;
-  ref.read(playModeProvider.notifier).state = newMode;
+  ref.read(playModeNotifierProvider.notifier).setMode(newMode);
 }

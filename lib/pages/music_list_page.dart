@@ -15,7 +15,6 @@ class MusicListPage extends ConsumerWidget {
   Widget build(BuildContext context, WidgetRef ref) {
     final musicListAsync = ref.watch(musicListProvider);
     final currentPlayingIndex = ref.watch(currentPlayingIndexProvider);
-    // final player = ref.watch(audioPlayerProvider);
     final playingState = ref.watch(playingStateProvider);
     onTapAdd() async {
       final controller = TextEditingController();
@@ -24,7 +23,7 @@ class MusicListPage extends ConsumerWidget {
         context: context,
         builder: (context) {
           return AlertDialog(
-            title: const Text('请输入内容'),
+            title: const Text('请输入BV'),
             content: TextField(
               controller: controller,
               autofocus: true,
@@ -430,7 +429,7 @@ class _MusicControlBar extends ConsumerWidget {
                   IconButton(
                     icon: const Icon(Icons.skip_next, size: 32),
                     onPressed: () {
-                      playNext(ref);
+                      ref.read(currentPlayingIndexProvider.notifier).playNext();
                     },
                   ),
                 ],

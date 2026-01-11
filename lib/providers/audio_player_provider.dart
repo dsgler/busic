@@ -1,11 +1,16 @@
 import 'package:busic/consts/network.dart';
+import 'package:busic/providers/music_list_provider.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
-import 'package:flutter_riverpod/legacy.dart';
 import 'package:just_audio/just_audio.dart';
 
 // 音频播放器管理器
-class AudioPlayerManager extends StateNotifier<AudioPlayer?> {
-  AudioPlayerManager() : super(null) {
+class AudioPlayerManager extends Notifier<AudioPlayer?> {
+  @override
+  AudioPlayer? build() {
+    return null;
+  }
+
+  AudioPlayerManager() {
     if (isUseSampleAudio) {
       _initSamplePlayer();
     }
@@ -27,21 +32,23 @@ class AudioPlayerManager extends StateNotifier<AudioPlayer?> {
     // 设置新的播放器
     state = newPlayer;
     newPlayer?.play();
+    newPlayer?.playerStateStream.listen((e) {
+      if (e.processingState == ProcessingState.completed) {
+        ref.read(currentPlayingIndexProvider.notifier).playNext();
+      }
+    });
   }
 
   // 获取当前播放器
-  AudioPlayer? get player => state;
 
-  @override
   void dispose() {
     state?.dispose();
-    super.dispose();
   }
 }
 
 // AudioPlayer 管理 Provider
 final audioPlayerManagerProvider =
-    StateNotifierProvider<AudioPlayerManager, AudioPlayer?>((ref) {
+    NotifierProvider<AudioPlayerManager, AudioPlayer?>(() {
       return AudioPlayerManager();
     });
 
@@ -51,6 +58,7 @@ final playingStateProvider = StreamProvider<bool>((ref) {
   if (player == null) {
     return Stream.value(false);
   }
+
   return player.playingStream;
 });
 
@@ -96,5 +104,18 @@ enum PlayMode {
   random, // 随机播放
 }
 
+class PlayModeNotifier extends Notifier<PlayMode> {
+  @override
+  PlayMode build() {
+    return PlayMode.sequential;
+  }
+
+  void setMode(PlayMode mode) {
+    state = mode;
+  }
+}
+
 // 播放模式 Provider
-final playModeProvider = StateProvider<PlayMode>((ref) => PlayMode.sequential);
+final playModeNotifierProvider = NotifierProvider<PlayModeNotifier, PlayMode>(
+  PlayModeNotifier.new,
+);

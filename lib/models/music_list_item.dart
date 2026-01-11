@@ -26,6 +26,7 @@ class MusicListItemBv {
 
     final o = (await getVideoUrl(bvid: bvid, cid: cid)).data.dash.audio[0];
     _audioObj = o;
+    fetchAudioTime = DateTime.now().millisecondsSinceEpoch;
     return o;
   }
 
@@ -82,24 +83,35 @@ class MusicListItemBv {
     );
   }
 
-  Future<AudioPlayer> generatePlayer() async {
-    final player = AudioPlayer();
-    final audioObj = await getAudioObj();
-    final audioSource = LockCachingAudioSource(
-      Uri.parse(audioObj.baseUrl),
-      headers: {
-        'User-Agent': ua,
-        'referer': referer,
-        // 'Cookie': cookieJar.
-      },
-      cacheFile: File(
-        join(
-          (await getApplicationCacheDirectory()).path,
-          'music_cache',
-          '$bvid-$cid.m4s',
-        ),
+  Future<File> getCacheFile() async {
+    return File(
+      join(
+        (await getApplicationCacheDirectory()).path,
+        'music_cache',
+        '$bvid-$cid.m4s',
       ),
     );
+  }
+
+  Future<AudioPlayer> generatePlayer() async {
+    final player = AudioPlayer();
+    final cacheFile = await getCacheFile();
+    AudioSource audioSource;
+    if (await cacheFile.exists()) {
+      audioSource = AudioSource.uri(cacheFile.uri);
+    } else {
+      final audioObj = await getAudioObj();
+      audioSource = LockCachingAudioSource(
+        Uri.parse(audioObj.baseUrl),
+        headers: {
+          'User-Agent': ua,
+          'referer': referer,
+          // 'Cookie': cookieJar.
+        },
+        cacheFile: cacheFile,
+      );
+    }
+
     await player.setAudioSource(audioSource);
 
     return player;

@@ -1,23 +1,26 @@
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import '../models/user_info.dart';
-import 'package:flutter_riverpod/legacy.dart';
 
 /// 用户信息持久化 key
 const String _userInfoKey = 'user_info';
 
 /// 用户信息 Notifier
-class UserInfoNotifier extends StateNotifier<UserInfo> {
-  final SharedPreferences _prefs;
+class UserInfoNotifier extends Notifier<UserInfo> {
+  UserInfoNotifier();
 
-  UserInfoNotifier(this._prefs) : super(UserInfo.guest()) {
+  @override
+  UserInfo build() {
     _loadUserInfo();
+    return UserInfo.guest();
   }
 
   /// 从本地加载用户信息
   Future<void> _loadUserInfo() async {
+    final prefs = ref.read(sharedPreferencesProvider);
+
     try {
-      final jsonString = _prefs.getString(_userInfoKey);
+      final jsonString = prefs.getString(_userInfoKey);
       if (jsonString != null && jsonString.isNotEmpty) {
         state = UserInfo.fromJsonString(jsonString);
       }
@@ -29,8 +32,10 @@ class UserInfoNotifier extends StateNotifier<UserInfo> {
 
   /// 保存用户信息到本地
   Future<void> _saveUserInfo() async {
+    final prefs = ref.read(sharedPreferencesProvider);
+
     try {
-      await _prefs.setString(_userInfoKey, state.toJsonString());
+      await prefs.setString(_userInfoKey, state.toJsonString());
     } catch (e) {
       print('保存用户信息失败: $e');
     }
@@ -65,8 +70,10 @@ class UserInfoNotifier extends StateNotifier<UserInfo> {
 
   /// 退出登录
   Future<void> logout() async {
+    final prefs = ref.read(sharedPreferencesProvider);
+
     state = UserInfo.guest();
-    await _prefs.remove(_userInfoKey);
+    await prefs.remove(_userInfoKey);
   }
 
   /// 重新加载用户信息
@@ -81,9 +88,6 @@ final sharedPreferencesProvider = Provider<SharedPreferences>((ref) {
 });
 
 /// 用户信息 Provider
-final userInfoProvider = StateNotifierProvider<UserInfoNotifier, UserInfo>((
-  ref,
-) {
-  final prefs = ref.watch(sharedPreferencesProvider);
-  return UserInfoNotifier(prefs);
+final userInfoProvider = NotifierProvider<UserInfoNotifier, UserInfo>(() {
+  return UserInfoNotifier();
 });
