@@ -29,8 +29,14 @@ enum MusicListMode {
 @JsonSerializable()
 class UserPref {
   MusicListMode musicListMode;
+  String favListId;
+  String seaListId;
 
-  UserPref({this.musicListMode = MusicListMode.defaultMode});
+  UserPref({
+    this.musicListMode = MusicListMode.defaultMode,
+    this.favListId = "",
+    this.seaListId = "",
+  });
 
   factory UserPref.fromRawJson(String str) =>
       UserPref.fromJson(json.decode(str));
@@ -42,7 +48,15 @@ class UserPref {
 
   Map<String, dynamic> toJson() => _$UserPrefToJson(this);
 
-  UserPref copyWith({MusicListMode? musicListMode}) {
-    return UserPref(musicListMode: musicListMode ?? this.musicListMode);
+  UserPref copyWith({
+    MusicListMode? musicListMode,
+    String? favListId,
+    String? seaListId,
+  }) {
+    return UserPref(
+      musicListMode: musicListMode ?? this.musicListMode,
+      favListId: favListId ?? this.favListId,
+      seaListId: seaListId ?? this.seaListId,
+    );
   }
 }

@@ -1,4 +1,6 @@
 import 'package:busic/models/user_pref.dart';
+import 'package:busic/network/fetch_fav_list.dart';
+import 'package:busic/network/fetch_sea_list.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../models/music_list_item.dart';
 import 'music_database.dart';
@@ -35,6 +37,36 @@ class MusicListNotifier extends AsyncNotifier<List<MusicListItemBv>> {
     return await db.getMusicList(category: category);
   }
 
+  Future<void> syncFavList({void Function(int progress)? onProgress}) async {
+    final mid = ref.read(UserPrefProvider).requireValue.favListId;
+    if (mid == '') {
+      throw 'favListId 不能为空';
+    }
+
+    await clearList(category: MusicListMode.favList);
+
+    await fetchFavList(mid, onProgress: onProgress).then((list) {
+      for (var a in list) {
+        addMusic(a);
+      }
+    });
+  }
+
+  Future<void> syncSeaList({void Function(int progress)? onProgress}) async {
+    final mid = ref.read(UserPrefProvider).requireValue.seaListId;
+    if (mid == '') {
+      throw 'seaListId 不能为空';
+    }
+
+    await clearList(category: MusicListMode.seasonsArchives);
+
+    await fetchSeaList(mid, onProgress: onProgress).then((list) {
+      for (var a in list) {
+        addMusic(a);
+      }
+    });
+  }
+
   // 添加音乐到列表
   Future<void> addMusic(MusicListItemBv music) async {
     final db = ref.read(musicDatabaseProvider);
@@ -59,13 +91,14 @@ class MusicListNotifier extends AsyncNotifier<List<MusicListItemBv>> {
   }
 
   // 清空当前分类的列表
-  Future<void> clearList() async {
+  Future<void> clearList({MusicListMode? category}) async {
     final db = ref.read(musicDatabaseProvider);
     final userPrefAsync = ref.read(UserPrefProvider);
     final currentCategory = userPrefAsync.requireValue.musicListMode;
+    category ??= currentCategory;
 
     // 在数据库中删除当前分类的所有音乐
-    await db.deleteMusicListByCategory(currentCategory);
+    await db.deleteMusicListByCategory(category);
     state = const AsyncValue.data([]);
   }
 

@@ -1,5 +1,4 @@
 import 'package:busic/models/user_pref.dart';
-import 'package:busic/network/fetch_fav_list.dart';
 import 'package:busic/providers/pref_provider.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
@@ -24,7 +23,13 @@ class MusicListPage extends ConsumerWidget {
         ? modeAsync.requireValue.musicListMode
         : MusicListMode.defaultMode;
 
-    onTapAdd() async {
+    void onProgress(int progress) {
+      ScaffoldMessenger.of(
+        context,
+      ).showSnackBar(SnackBar(content: Text('已加载第 $progress 页')));
+    }
+
+    void onTapAdd() async {
       final controller = TextEditingController();
 
       final result = await showDialog<String>(
@@ -84,14 +89,28 @@ class MusicListPage extends ConsumerWidget {
 
                 mid = result;
               }
-              fetchFavList(mid).then((list) {
-                for (var a in list) {
-                  ref.read(musicListProvider.notifier).addMusic(a);
-                }
+
+              ref.read(UserPrefProvider.notifier).setState((state) {
+                state.favListId = mid;
               });
+
+              await ref
+                  .read(musicListProvider.notifier)
+                  .syncFavList(onProgress: onProgress);
             }
           case MusicListMode.seasonsArchives:
-            {}
+            {
+              final re = RegExp(r'^\d+$');
+              final m = re.firstMatch(result);
+              if (m == null) throw '无法识别season_id,请输入纯数字';
+              ref.read(UserPrefProvider.notifier).setState((state) {
+                state.seaListId = result;
+              });
+
+              await ref
+                  .read(musicListProvider.notifier)
+                  .syncSeaList(onProgress: onProgress);
+            }
         }
       }
     }
@@ -106,11 +125,35 @@ class MusicListPage extends ConsumerWidget {
         centerTitle: true,
         backgroundColor: Theme.of(context).colorScheme.inversePrimary,
         actions: [
-          IconButton(icon: const Icon(Icons.add), onPressed: onTapAdd),
+          if (mode == MusicListMode.defaultMode ||
+              (musicListAsync.hasValue && musicListAsync.requireValue.isEmpty))
+            IconButton(icon: const Icon(Icons.add), onPressed: onTapAdd)
+          else
+            IconButton(
+              icon: const Icon(Icons.sync),
+              onPressed: () {
+                switch (mode) {
+                  case MusicListMode.favList:
+                    {
+                      ref
+                          .read(musicListProvider.notifier)
+                          .syncFavList(onProgress: onProgress);
+                    }
+                  case MusicListMode.seasonsArchives:
+                    {
+                      ref
+                          .read(musicListProvider.notifier)
+                          .syncSeaList(onProgress: onProgress);
+                    }
+                  case _:
+                    {}
+                }
+              },
+            ),
           IconButton(
             icon: const Icon(Icons.delete),
             onPressed: () {
-              ref.read(musicListProvider.notifier).clearList();
+              ref.read(musicListProvider.notifier).clearList(category: mode);
             },
           ),
         ],
@@ -205,88 +248,99 @@ class MusicListPage extends ConsumerWidget {
                         ],
                       ),
                     )
-                  : ListView.builder(
-                      itemCount: musicList.length,
-                      itemBuilder: (context, index) {
-                        final music = musicList[index];
-                        final isCurrentPlaying = currentPlayingIndex == index;
+                  : Padding(
+                      padding: const EdgeInsets.only(right: 8),
+                      child: Scrollbar(
+                        interactive: true,
 
-                        return ListTile(
-                          tileColor: isCurrentPlaying
-                              ? Theme.of(
-                                  context,
-                                ).colorScheme.surfaceContainerHighest
-                              : null,
-                          leading: Container(
-                            width: 50,
-                            height: 50,
-                            decoration: BoxDecoration(
-                              color: Colors.grey[300],
-                              borderRadius: BorderRadius.circular(8),
-                            ),
-                            child: music.coverUrl != null
-                                ? ClipRRect(
-                                    borderRadius: BorderRadius.circular(8),
-                                    child: CachedNetworkImage(
-                                      imageUrl: music.coverUrl!,
-                                      fit: BoxFit.cover,
-                                      errorWidget:
-                                          (context, error, stackTrace) {
-                                            return Icon(
-                                              Icons.music_note,
-                                              color: Colors.grey[600],
-                                            );
-                                          },
-                                    ),
-                                  )
-                                : Icon(
-                                    Icons.music_note,
-                                    color: Colors.grey[600],
-                                  ),
-                          ),
-                          title: Text(
-                            music.title,
-                            style: TextStyle(
-                              color: isCurrentPlaying
-                                  ? Theme.of(context).colorScheme.primary
-                                  : null,
-                              fontWeight: isCurrentPlaying
-                                  ? FontWeight.bold
-                                  : null,
-                            ),
-                          ),
-                          subtitle: Text(music.artist),
-                          trailing: isCurrentPlaying
-                              ? playingState.when(
-                                  data: (isPlaying) => Icon(
-                                    isPlaying ? Icons.volume_up : Icons.pause,
-                                    color: Theme.of(
+                        child: ListView.builder(
+                          itemCount: musicList.length,
+
+                          itemBuilder: (context, index) {
+                            final music = musicList[index];
+                            final isCurrentPlaying =
+                                currentPlayingIndex == index;
+
+                            return ListTile(
+                              tileColor: isCurrentPlaying
+                                  ? Theme.of(
                                       context,
-                                    ).colorScheme.primary,
-                                  ),
-                                  loading: () => const SizedBox(
-                                    width: 20,
-                                    height: 20,
-                                    child: CircularProgressIndicator(
-                                      strokeWidth: 2,
-                                    ),
-                                  ),
-                                  error: (_, _) => const Icon(Icons.error),
-                                )
-                              : null,
-                          onTap: () async {
-                            // 如果点击的是当前正在播放的歌曲，只切换播放/暂停状态
-                            if (currentPlayingIndex == index) {
-                              return;
-                            }
+                                    ).colorScheme.surfaceContainerHighest
+                                  : null,
+                              leading: Container(
+                                width: 50,
+                                height: 50,
+                                decoration: BoxDecoration(
+                                  color: Colors.grey[300],
+                                  borderRadius: BorderRadius.circular(8),
+                                ),
+                                child: music.coverUrl != null
+                                    ? ClipRRect(
+                                        borderRadius: BorderRadius.circular(8),
+                                        child: CachedNetworkImage(
+                                          imageUrl: music.coverUrl!,
+                                          fit: BoxFit.cover,
+                                          errorWidget:
+                                              (context, error, stackTrace) {
+                                                return Icon(
+                                                  Icons.music_note,
+                                                  color: Colors.grey[600],
+                                                );
+                                              },
+                                        ),
+                                      )
+                                    : Icon(
+                                        Icons.music_note,
+                                        color: Colors.grey[600],
+                                      ),
+                              ),
+                              title: Text(
+                                music.title,
+                                style: TextStyle(
+                                  color: isCurrentPlaying
+                                      ? Theme.of(context).colorScheme.primary
+                                      : null,
+                                  fontWeight: isCurrentPlaying
+                                      ? FontWeight.bold
+                                      : null,
+                                ),
+                              ),
+                              subtitle: Text(music.artist),
+                              trailing: isCurrentPlaying
+                                  ? playingState.when(
+                                      data: (isPlaying) => Icon(
+                                        isPlaying
+                                            ? Icons.volume_up
+                                            : Icons.pause,
+                                        color: Theme.of(
+                                          context,
+                                        ).colorScheme.primary,
+                                      ),
+                                      loading: () => const SizedBox(
+                                        width: 20,
+                                        height: 20,
+                                        child: CircularProgressIndicator(
+                                          strokeWidth: 2,
+                                        ),
+                                      ),
+                                      error: (_, _) => const Icon(Icons.error),
+                                    )
+                                  : null,
+                              onTap: () async {
+                                // 如果点击的是当前正在播放的歌曲，只切换播放/暂停状态
+                                if (currentPlayingIndex == index) {
+                                  return;
+                                }
 
-                            // 设置当前播放的音乐索引
-                            ref
-                                .read(currentPlayingIndexProvider.notifier)
-                                .setIndex(index);
+                                // 设置当前播放的音乐索引
+                                ref
+                                    .read(currentPlayingIndexProvider.notifier)
+                                    .setIndex(index);
+                              },
+                            );
                           },
-                        );
-                      },
+                        ),
+                      ),
                     ),
               loading: () => const Center(child: CircularProgressIndicator()),
               error: (error, stack) => Center(
@@ -342,7 +396,7 @@ class MusicListPage extends ConsumerWidget {
                 );
               },
               loading: () => const SizedBox.shrink(),
-              error: (_, __) => const SizedBox.shrink(),
+              error: (_, _) => const SizedBox.shrink(),
             ),
         ],
       ),
@@ -371,7 +425,7 @@ class _MusicControlBar extends ConsumerWidget {
           color: Theme.of(context).colorScheme.surfaceContainerHighest,
           boxShadow: [
             BoxShadow(
-              color: Colors.black.withOpacity(0.1),
+              color: Colors.black.withValues(alpha: 0.1),
               blurRadius: 10,
               offset: const Offset(0, -2),
             ),
@@ -396,11 +450,11 @@ class _MusicControlBar extends ConsumerWidget {
                   },
                   loading: () =>
                       const LinearProgressIndicator(minHeight: 2, value: 0),
-                  error: (_, __) => const SizedBox(height: 2),
+                  error: (_, _) => const SizedBox(height: 2),
                 );
               },
               loading: () => const LinearProgressIndicator(minHeight: 2),
-              error: (_, __) => const SizedBox(height: 2),
+              error: (_, _) => const SizedBox(height: 2),
             ),
 
             // 控制栏内容
@@ -488,7 +542,7 @@ class _MusicControlBar extends ConsumerWidget {
                         child: CircularProgressIndicator(strokeWidth: 3),
                       ),
                     ),
-                    error: (_, __) => IconButton(
+                    error: (_, _) => IconButton(
                       icon: const Icon(Icons.error, size: 32),
                       onPressed: null,
                     ),

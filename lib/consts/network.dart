@@ -6,3 +6,5 @@ final isDebugNetwork = false;
 final isUseSampleAudio = false;
 
 final expireTime = Duration(days: 1).inMilliseconds;
+
+final fetchInterval = Duration(milliseconds: 500);

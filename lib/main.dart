@@ -1,6 +1,5 @@
 import 'package:busic/network/request.dart';
 import 'package:busic/pages/music_list_page.dart';
-import 'package:busic/utils/error_handler.dart';
 import 'package:busic/providers/user_info_provider.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
@@ -43,7 +42,6 @@ class MyApp extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     // 将context传递给错误处理器
-    GlobalErrorHandler().setContext(context);
 
     return MaterialApp(
       title: 'Busic - 音乐播放器',

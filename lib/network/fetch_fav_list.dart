@@ -1,9 +1,13 @@
+import 'package:busic/consts/network.dart';
 import 'package:busic/models/fav_list_ret.dart';
 import 'package:busic/models/music_list_item.dart';
 import 'package:busic/models/user_pref.dart';
 import 'package:busic/network/request.dart';
 
-Future<List<MusicListItemBv>> fetchFavList(String media_id) async {
+Future<List<MusicListItemBv>> fetchFavList(
+  String media_id, {
+  void Function(int progress)? onProgress,
+}) async {
   var curp = 1;
   final List<MusicListItemBv> l = [];
   var hasMore = true;
@@ -41,7 +45,8 @@ Future<List<MusicListItemBv>> fetchFavList(String media_id) async {
 
     hasMore = r.data.hasMore;
     curp++;
-    await Future.delayed(Duration(milliseconds: 500));
+    onProgress?.call(curp);
+    await Future.delayed(fetchInterval);
   }
 
   return l;

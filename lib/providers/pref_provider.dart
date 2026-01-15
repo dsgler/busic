@@ -21,7 +21,13 @@ class UserPrefNotifier extends AsyncNotifier<UserPref> {
   }
 
   void setMusicListMode(MusicListMode m) {
-    state = AsyncData(state.value!.copyWith(musicListMode: m));
+    state = AsyncData(state.requireValue.copyWith(musicListMode: m));
+  }
+
+  void setState(void Function(UserPref state) cb) {
+    final newState = state.requireValue.copyWith();
+    cb(newState);
+    state = AsyncData(newState);
   }
 }
 
