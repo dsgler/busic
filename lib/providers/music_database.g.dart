@@ -22,17 +22,6 @@ class $MusicItemsTable extends MusicItems
       'PRIMARY KEY AUTOINCREMENT',
     ),
   );
-  static const VerificationMeta _storageKeyMeta = const VerificationMeta(
-    'storageKey',
-  );
-  @override
-  late final GeneratedColumn<String> storageKey = GeneratedColumn<String>(
-    'storage_key',
-    aliasedName,
-    false,
-    type: DriftSqlType.string,
-    requiredDuringInsert: true,
-  );
   static const VerificationMeta _bvidMeta = const VerificationMeta('bvid');
   @override
   late final GeneratedColumn<String> bvid = GeneratedColumn<String>(
@@ -80,15 +69,27 @@ class $MusicItemsTable extends MusicItems
     type: DriftSqlType.string,
     requiredDuringInsert: false,
   );
+  static const VerificationMeta _categoryMeta = const VerificationMeta(
+    'category',
+  );
+  @override
+  late final GeneratedColumn<String> category = GeneratedColumn<String>(
+    'category',
+    aliasedName,
+    false,
+    type: DriftSqlType.string,
+    requiredDuringInsert: false,
+    defaultValue: const Constant('default'),
+  );
   @override
   List<GeneratedColumn> get $columns => [
     id,
-    storageKey,
     bvid,
     cid,
     title,
     artist,
     coverUrl,
+    category,
   ];
   @override
   String get aliasedName => _alias ?? actualTableName;
@@ -104,14 +105,6 @@ class $MusicItemsTable extends MusicItems
     final data = instance.toColumns(true);
     if (data.containsKey('id')) {
       context.handle(_idMeta, id.isAcceptableOrUnknown(data['id']!, _idMeta));
-    }
-    if (data.containsKey('storage_key')) {
-      context.handle(
-        _storageKeyMeta,
-        storageKey.isAcceptableOrUnknown(data['storage_key']!, _storageKeyMeta),
-      );
-    } else if (isInserting) {
-      context.missing(_storageKeyMeta);
     }
     if (data.containsKey('bvid')) {
       context.handle(
@@ -151,6 +144,12 @@ class $MusicItemsTable extends MusicItems
         coverUrl.isAcceptableOrUnknown(data['cover_url']!, _coverUrlMeta),
       );
     }
+    if (data.containsKey('category')) {
+      context.handle(
+        _categoryMeta,
+        category.isAcceptableOrUnknown(data['category']!, _categoryMeta),
+      );
+    }
     return context;
   }
 
@@ -163,10 +162,6 @@ class $MusicItemsTable extends MusicItems
       id: attachedDatabase.typeMapping.read(
         DriftSqlType.int,
         data['${effectivePrefix}id'],
-      )!,
-      storageKey: attachedDatabase.typeMapping.read(
-        DriftSqlType.string,
-        data['${effectivePrefix}storage_key'],
       )!,
       bvid: attachedDatabase.typeMapping.read(
         DriftSqlType.string,
@@ -188,6 +183,10 @@ class $MusicItemsTable extends MusicItems
         DriftSqlType.string,
         data['${effectivePrefix}cover_url'],
       ),
+      category: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}category'],
+      )!,
     );
   }
 
@@ -199,26 +198,25 @@ class $MusicItemsTable extends MusicItems
 
 class MusicItem extends DataClass implements Insertable<MusicItem> {
   final int id;
-  final String storageKey;
   final String bvid;
   final int cid;
   final String title;
   final String artist;
   final String? coverUrl;
+  final String category;
   const MusicItem({
     required this.id,
-    required this.storageKey,
     required this.bvid,
     required this.cid,
     required this.title,
     required this.artist,
     this.coverUrl,
+    required this.category,
   });
   @override
   Map<String, Expression> toColumns(bool nullToAbsent) {
     final map = <String, Expression>{};
     map['id'] = Variable<int>(id);
-    map['storage_key'] = Variable<String>(storageKey);
     map['bvid'] = Variable<String>(bvid);
     map['cid'] = Variable<int>(cid);
     map['title'] = Variable<String>(title);
@@ -226,13 +224,13 @@ class MusicItem extends DataClass implements Insertable<MusicItem> {
     if (!nullToAbsent || coverUrl != null) {
       map['cover_url'] = Variable<String>(coverUrl);
     }
+    map['category'] = Variable<String>(category);
     return map;
   }
 
   MusicItemsCompanion toCompanion(bool nullToAbsent) {
     return MusicItemsCompanion(
       id: Value(id),
-      storageKey: Value(storageKey),
       bvid: Value(bvid),
       cid: Value(cid),
       title: Value(title),
@@ -240,6 +238,7 @@ class MusicItem extends DataClass implements Insertable<MusicItem> {
       coverUrl: coverUrl == null && nullToAbsent
           ? const Value.absent()
           : Value(coverUrl),
+      category: Value(category),
     );
   }
 
@@ -250,12 +249,12 @@ class MusicItem extends DataClass implements Insertable<MusicItem> {
     serializer ??= driftRuntimeOptions.defaultSerializer;
     return MusicItem(
       id: serializer.fromJson<int>(json['id']),
-      storageKey: serializer.fromJson<String>(json['storageKey']),
       bvid: serializer.fromJson<String>(json['bvid']),
       cid: serializer.fromJson<int>(json['cid']),
       title: serializer.fromJson<String>(json['title']),
       artist: serializer.fromJson<String>(json['artist']),
       coverUrl: serializer.fromJson<String?>(json['coverUrl']),
+      category: serializer.fromJson<String>(json['category']),
     );
   }
   @override
@@ -263,43 +262,41 @@ class MusicItem extends DataClass implements Insertable<MusicItem> {
     serializer ??= driftRuntimeOptions.defaultSerializer;
     return <String, dynamic>{
       'id': serializer.toJson<int>(id),
-      'storageKey': serializer.toJson<String>(storageKey),
       'bvid': serializer.toJson<String>(bvid),
       'cid': serializer.toJson<int>(cid),
       'title': serializer.toJson<String>(title),
       'artist': serializer.toJson<String>(artist),
       'coverUrl': serializer.toJson<String?>(coverUrl),
+      'category': serializer.toJson<String>(category),
     };
   }
 
   MusicItem copyWith({
     int? id,
-    String? storageKey,
     String? bvid,
     int? cid,
     String? title,
     String? artist,
     Value<String?> coverUrl = const Value.absent(),
+    String? category,
   }) => MusicItem(
     id: id ?? this.id,
-    storageKey: storageKey ?? this.storageKey,
     bvid: bvid ?? this.bvid,
     cid: cid ?? this.cid,
     title: title ?? this.title,
     artist: artist ?? this.artist,
     coverUrl: coverUrl.present ? coverUrl.value : this.coverUrl,
+    category: category ?? this.category,
   );
   MusicItem copyWithCompanion(MusicItemsCompanion data) {
     return MusicItem(
       id: data.id.present ? data.id.value : this.id,
-      storageKey: data.storageKey.present
-          ? data.storageKey.value
-          : this.storageKey,
       bvid: data.bvid.present ? data.bvid.value : this.bvid,
       cid: data.cid.present ? data.cid.value : this.cid,
       title: data.title.present ? data.title.value : this.title,
       artist: data.artist.present ? data.artist.value : this.artist,
       coverUrl: data.coverUrl.present ? data.coverUrl.value : this.coverUrl,
+      category: data.category.present ? data.category.value : this.category,
     );
   }
 
@@ -307,99 +304,98 @@ class MusicItem extends DataClass implements Insertable<MusicItem> {
   String toString() {
     return (StringBuffer('MusicItem(')
           ..write('id: $id, ')
-          ..write('storageKey: $storageKey, ')
           ..write('bvid: $bvid, ')
           ..write('cid: $cid, ')
           ..write('title: $title, ')
           ..write('artist: $artist, ')
-          ..write('coverUrl: $coverUrl')
+          ..write('coverUrl: $coverUrl, ')
+          ..write('category: $category')
           ..write(')'))
         .toString();
   }
 
   @override
   int get hashCode =>
-      Object.hash(id, storageKey, bvid, cid, title, artist, coverUrl);
+      Object.hash(id, bvid, cid, title, artist, coverUrl, category);
   @override
   bool operator ==(Object other) =>
       identical(this, other) ||
       (other is MusicItem &&
           other.id == this.id &&
-          other.storageKey == this.storageKey &&
           other.bvid == this.bvid &&
           other.cid == this.cid &&
           other.title == this.title &&
           other.artist == this.artist &&
-          other.coverUrl == this.coverUrl);
+          other.coverUrl == this.coverUrl &&
+          other.category == this.category);
 }
 
 class MusicItemsCompanion extends UpdateCompanion<MusicItem> {
   final Value<int> id;
-  final Value<String> storageKey;
   final Value<String> bvid;
   final Value<int> cid;
   final Value<String> title;
   final Value<String> artist;
   final Value<String?> coverUrl;
+  final Value<String> category;
   const MusicItemsCompanion({
     this.id = const Value.absent(),
-    this.storageKey = const Value.absent(),
     this.bvid = const Value.absent(),
     this.cid = const Value.absent(),
     this.title = const Value.absent(),
     this.artist = const Value.absent(),
     this.coverUrl = const Value.absent(),
+    this.category = const Value.absent(),
   });
   MusicItemsCompanion.insert({
     this.id = const Value.absent(),
-    required String storageKey,
     required String bvid,
     required int cid,
     required String title,
     required String artist,
     this.coverUrl = const Value.absent(),
-  }) : storageKey = Value(storageKey),
-       bvid = Value(bvid),
+    this.category = const Value.absent(),
+  }) : bvid = Value(bvid),
        cid = Value(cid),
        title = Value(title),
        artist = Value(artist);
   static Insertable<MusicItem> custom({
     Expression<int>? id,
-    Expression<String>? storageKey,
     Expression<String>? bvid,
     Expression<int>? cid,
     Expression<String>? title,
     Expression<String>? artist,
     Expression<String>? coverUrl,
+    Expression<String>? category,
   }) {
     return RawValuesInsertable({
       if (id != null) 'id': id,
-      if (storageKey != null) 'storage_key': storageKey,
       if (bvid != null) 'bvid': bvid,
       if (cid != null) 'cid': cid,
       if (title != null) 'title': title,
       if (artist != null) 'artist': artist,
       if (coverUrl != null) 'cover_url': coverUrl,
+      if (category != null) 'category': category,
     });
   }
 
   MusicItemsCompanion copyWith({
     Value<int>? id,
-    Value<String>? storageKey,
     Value<String>? bvid,
     Value<int>? cid,
     Value<String>? title,
     Value<String>? artist,
     Value<String?>? coverUrl,
+    Value<String>? category,
   }) {
     return MusicItemsCompanion(
       id: id ?? this.id,
-      storageKey: storageKey ?? this.storageKey,
       bvid: bvid ?? this.bvid,
       cid: cid ?? this.cid,
       title: title ?? this.title,
       artist: artist ?? this.artist,
       coverUrl: coverUrl ?? this.coverUrl,
+      category: category ?? this.category,
     );
   }
 
@@ -408,9 +404,6 @@ class MusicItemsCompanion extends UpdateCompanion<MusicItem> {
     final map = <String, Expression>{};
     if (id.present) {
       map['id'] = Variable<int>(id.value);
-    }
-    if (storageKey.present) {
-      map['storage_key'] = Variable<String>(storageKey.value);
     }
     if (bvid.present) {
       map['bvid'] = Variable<String>(bvid.value);
@@ -427,6 +420,9 @@ class MusicItemsCompanion extends UpdateCompanion<MusicItem> {
     if (coverUrl.present) {
       map['cover_url'] = Variable<String>(coverUrl.value);
     }
+    if (category.present) {
+      map['category'] = Variable<String>(category.value);
+    }
     return map;
   }
 
@@ -434,12 +430,12 @@ class MusicItemsCompanion extends UpdateCompanion<MusicItem> {
   String toString() {
     return (StringBuffer('MusicItemsCompanion(')
           ..write('id: $id, ')
-          ..write('storageKey: $storageKey, ')
           ..write('bvid: $bvid, ')
           ..write('cid: $cid, ')
           ..write('title: $title, ')
           ..write('artist: $artist, ')
-          ..write('coverUrl: $coverUrl')
+          ..write('coverUrl: $coverUrl, ')
+          ..write('category: $category')
           ..write(')'))
         .toString();
   }
@@ -459,22 +455,22 @@ abstract class _$MusicDatabase extends GeneratedDatabase {
 typedef $$MusicItemsTableCreateCompanionBuilder =
     MusicItemsCompanion Function({
       Value<int> id,
-      required String storageKey,
       required String bvid,
       required int cid,
       required String title,
       required String artist,
       Value<String?> coverUrl,
+      Value<String> category,
     });
 typedef $$MusicItemsTableUpdateCompanionBuilder =
     MusicItemsCompanion Function({
       Value<int> id,
-      Value<String> storageKey,
       Value<String> bvid,
       Value<int> cid,
       Value<String> title,
       Value<String> artist,
       Value<String?> coverUrl,
+      Value<String> category,
     });
 
 class $$MusicItemsTableFilterComposer
@@ -488,11 +484,6 @@ class $$MusicItemsTableFilterComposer
   });
   ColumnFilters<int> get id => $composableBuilder(
     column: $table.id,
-    builder: (column) => ColumnFilters(column),
-  );
-
-  ColumnFilters<String> get storageKey => $composableBuilder(
-    column: $table.storageKey,
     builder: (column) => ColumnFilters(column),
   );
 
@@ -520,6 +511,11 @@ class $$MusicItemsTableFilterComposer
     column: $table.coverUrl,
     builder: (column) => ColumnFilters(column),
   );
+
+  ColumnFilters<String> get category => $composableBuilder(
+    column: $table.category,
+    builder: (column) => ColumnFilters(column),
+  );
 }
 
 class $$MusicItemsTableOrderingComposer
@@ -533,11 +529,6 @@ class $$MusicItemsTableOrderingComposer
   });
   ColumnOrderings<int> get id => $composableBuilder(
     column: $table.id,
-    builder: (column) => ColumnOrderings(column),
-  );
-
-  ColumnOrderings<String> get storageKey => $composableBuilder(
-    column: $table.storageKey,
     builder: (column) => ColumnOrderings(column),
   );
 
@@ -565,6 +556,11 @@ class $$MusicItemsTableOrderingComposer
     column: $table.coverUrl,
     builder: (column) => ColumnOrderings(column),
   );
+
+  ColumnOrderings<String> get category => $composableBuilder(
+    column: $table.category,
+    builder: (column) => ColumnOrderings(column),
+  );
 }
 
 class $$MusicItemsTableAnnotationComposer
@@ -578,11 +574,6 @@ class $$MusicItemsTableAnnotationComposer
   });
   GeneratedColumn<int> get id =>
       $composableBuilder(column: $table.id, builder: (column) => column);
-
-  GeneratedColumn<String> get storageKey => $composableBuilder(
-    column: $table.storageKey,
-    builder: (column) => column,
-  );
 
   GeneratedColumn<String> get bvid =>
       $composableBuilder(column: $table.bvid, builder: (column) => column);
@@ -598,6 +589,9 @@ class $$MusicItemsTableAnnotationComposer
 
   GeneratedColumn<String> get coverUrl =>
       $composableBuilder(column: $table.coverUrl, builder: (column) => column);
+
+  GeneratedColumn<String> get category =>
+      $composableBuilder(column: $table.category, builder: (column) => column);
 }
 
 class $$MusicItemsTableTableManager
@@ -632,38 +626,38 @@ class $$MusicItemsTableTableManager
           updateCompanionCallback:
               ({
                 Value<int> id = const Value.absent(),
-                Value<String> storageKey = const Value.absent(),
                 Value<String> bvid = const Value.absent(),
                 Value<int> cid = const Value.absent(),
                 Value<String> title = const Value.absent(),
                 Value<String> artist = const Value.absent(),
                 Value<String?> coverUrl = const Value.absent(),
+                Value<String> category = const Value.absent(),
               }) => MusicItemsCompanion(
                 id: id,
-                storageKey: storageKey,
                 bvid: bvid,
                 cid: cid,
                 title: title,
                 artist: artist,
                 coverUrl: coverUrl,
+                category: category,
               ),
           createCompanionCallback:
               ({
                 Value<int> id = const Value.absent(),
-                required String storageKey,
                 required String bvid,
                 required int cid,
                 required String title,
                 required String artist,
                 Value<String?> coverUrl = const Value.absent(),
+                Value<String> category = const Value.absent(),
               }) => MusicItemsCompanion.insert(
                 id: id,
-                storageKey: storageKey,
                 bvid: bvid,
                 cid: cid,
                 title: title,
                 artist: artist,
                 coverUrl: coverUrl,
+                category: category,
               ),
           withReferenceMapper: (p0) => p0
               .map((e) => (e.readTable(table), BaseReferences(db, table, e)))

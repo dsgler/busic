@@ -347,7 +347,7 @@ class Page {
     vid: json["vid"],
     weblink: json["weblink"],
     dimension: Dimension.fromJson(json["dimension"]),
-    firstFrame: json["first_frame"],
+    firstFrame: json["first_frame"] ?? "",
     ctime: json["ctime"],
   );
 

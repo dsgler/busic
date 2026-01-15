@@ -1,3 +1,6 @@
+import 'package:busic/models/user_pref.dart';
+import 'package:busic/network/fetch_fav_list.dart';
+import 'package:busic/providers/pref_provider.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../models/music_list_item.dart';
@@ -16,6 +19,10 @@ class MusicListPage extends ConsumerWidget {
     final musicListAsync = ref.watch(musicListProvider);
     final currentPlayingIndex = ref.watch(currentPlayingIndexProvider);
     final playingState = ref.watch(playingStateProvider);
+    final modeAsync = ref.watch(UserPrefProvider);
+    final mode = modeAsync.hasValue
+        ? modeAsync.requireValue.musicListMode
+        : MusicListMode.defaultMode;
 
     onTapAdd() async {
       final controller = TextEditingController();
@@ -24,7 +31,11 @@ class MusicListPage extends ConsumerWidget {
         context: context,
         builder: (context) {
           return AlertDialog(
-            title: const Text('请输入BV'),
+            title: Text(switch (mode) {
+              MusicListMode.defaultMode => '请输入BV',
+              MusicListMode.favList => '请输入fid或收藏夹链接',
+              MusicListMode.seasonsArchives => '请输入fid或合辑链接',
+            }),
             content: TextField(
               controller: controller,
               autofocus: true,
@@ -47,19 +58,51 @@ class MusicListPage extends ConsumerWidget {
       );
 
       if (result != null) {
-        if (result[0].toLowerCase() == 'b' && result[1].toLowerCase() == 'v') {
-          MusicListItemBv.fetchBv(bvid: result).then((list) {
-            for (var a in list) {
-              ref.read(musicListProvider.notifier).addMusic(a);
+        switch (mode) {
+          case MusicListMode.defaultMode:
+            {
+              if (result[0].toLowerCase() == 'b' &&
+                  result[1].toLowerCase() == 'v') {
+                MusicListItemBv.fetchBv(bvid: result).then((list) {
+                  for (var a in list) {
+                    ref.read(musicListProvider.notifier).addMusic(a);
+                  }
+                });
+              }
             }
-          });
+          case MusicListMode.favList:
+            {
+              var re = RegExp(r'fid=(\d+)');
+              var m = re.firstMatch(result);
+              String mid;
+              if (m != null) {
+                mid = m[1]!;
+              } else {
+                re = RegExp(r'^\d+$');
+                m = re.firstMatch(result);
+                if (m == null) throw '无法识别fid';
+
+                mid = result;
+              }
+              fetchFavList(mid).then((list) {
+                for (var a in list) {
+                  ref.read(musicListProvider.notifier).addMusic(a);
+                }
+              });
+            }
+          case MusicListMode.seasonsArchives:
+            {}
         }
       }
     }
 
     return Scaffold(
       appBar: AppBar(
-        title: const Text('我的音乐'),
+        title: Text(switch (mode) {
+          MusicListMode.defaultMode => '我的音乐',
+          MusicListMode.favList => '收藏夹',
+          MusicListMode.seasonsArchives => '视频合辑',
+        }),
         centerTitle: true,
         backgroundColor: Theme.of(context).colorScheme.inversePrimary,
         actions: [
@@ -91,8 +134,33 @@ class MusicListPage extends ConsumerWidget {
             const Divider(),
             ListTile(
               leading: const Icon(Icons.music_note),
-              title: const Text('我的音乐'),
+              title: const Text('默认列表'),
               onTap: () {
+                ref
+                    .read(UserPrefProvider.notifier)
+                    .setMusicListMode(MusicListMode.defaultMode);
+                Navigator.pop(context);
+              },
+            ),
+            const Divider(),
+            ListTile(
+              leading: const Icon(Icons.music_note),
+              title: const Text('收藏夹'),
+              onTap: () {
+                ref
+                    .read(UserPrefProvider.notifier)
+                    .setMusicListMode(MusicListMode.favList);
+                Navigator.pop(context);
+              },
+            ),
+            const Divider(),
+            ListTile(
+              leading: const Icon(Icons.music_note),
+              title: const Text('合辑'),
+              onTap: () {
+                ref
+                    .read(UserPrefProvider.notifier)
+                    .setMusicListMode(MusicListMode.seasonsArchives);
                 Navigator.pop(context);
               },
             ),
@@ -203,7 +271,7 @@ class MusicListPage extends ConsumerWidget {
                                       strokeWidth: 2,
                                     ),
                                   ),
-                                  error: (_, __) => const Icon(Icons.error),
+                                  error: (_, _) => const Icon(Icons.error),
                                 )
                               : null,
                           onTap: () async {

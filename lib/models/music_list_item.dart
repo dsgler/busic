@@ -1,19 +1,25 @@
 import 'dart:io';
 
 import 'package:busic/consts/network.dart';
+import 'package:busic/models/user_pref.dart';
 import 'package:busic/network/video_info.dart';
 import 'package:busic/network/video_url.dart';
+import 'package:json_annotation/json_annotation.dart';
 import 'package:path/path.dart';
 import 'package:path_provider/path_provider.dart';
 import 'video_url_ret.dart';
 import 'package:just_audio/just_audio.dart';
 
+part 'music_list_item.g.dart';
+
+@JsonSerializable()
 class MusicListItemBv {
   final String bvid;
   final int cid;
   final String title;
   final String artist;
   final String? coverUrl;
+  final MusicListMode category;
   Audio? _audioObj;
   int fetchAudioTime;
 
@@ -36,6 +42,7 @@ class MusicListItemBv {
     required this.title,
     this.artist = '未知艺术家',
     this.coverUrl,
+    this.category = MusicListMode.defaultMode,
     Audio? audioObj,
     this.fetchAudioTime = 0,
   }) : _audioObj = audioObj;
@@ -43,6 +50,7 @@ class MusicListItemBv {
   static Future<List<MusicListItemBv>> fetchBv({
     required String bvid,
     int cid = 0,
+    MusicListMode mode = MusicListMode.defaultMode,
   }) async {
     final info = await getVideoInfo(bvid: bvid);
 
@@ -54,34 +62,18 @@ class MusicListItemBv {
             cid: p.cid,
             coverUrl: p.firstFrame,
             artist: info.data.owner.name,
+            category: mode,
           ),
         )
         .toList();
   }
 
   // 序列化：将对象转换为 JSON
-  Map<String, dynamic> toJson() {
-    return {
-      'bvid': bvid,
-      'cid': cid,
-      'title': title,
-      'artist': artist,
-      'coverUrl': coverUrl,
-      // 'audioObj': audioObj.toJson(),
-    };
-  }
+  Map<String, dynamic> toJson() => _$MusicListItemBvToJson(this);
 
   // 反序列化：从 JSON 创建对象
-  factory MusicListItemBv.fromJson(Map<String, dynamic> json) {
-    return MusicListItemBv(
-      bvid: json['bvid'] as String,
-      cid: json['cid'] as int,
-      title: json['title'] as String,
-      artist: json['artist'] as String? ?? '未知艺术家',
-      coverUrl: json['coverUrl'] as String?,
-      audioObj: Audio.fromJson(json['audioObj'] as Map<String, dynamic>),
-    );
-  }
+  factory MusicListItemBv.fromJson(Map<String, dynamic> json) =>
+      _$MusicListItemBvFromJson(json);
 
   Future<File> getCacheFile() async {
     return File(
