@@ -24,6 +24,9 @@ class PlayPage extends ConsumerWidget {
         : null;
     final isLoaded = currentPlayingIndex != null && musicList != null;
     final music = isLoaded ? musicList[currentPlayingIndex] : null;
+    final isSinglePage =
+        music != null &&
+        (music.subTitle == "" || music.title == music.subTitle);
 
     return Scaffold(
       appBar: AppBar(
@@ -88,18 +91,25 @@ class PlayPage extends ConsumerWidget {
             child: Column(
               children: [
                 Text(
-                  music?.title ?? "歌曲标题",
+                  (isSinglePage ? music.title : music?.subTitle) ?? "歌曲标题",
                   style: Theme.of(context).textTheme.headlineSmall?.copyWith(
                     fontWeight: FontWeight.bold,
                   ),
                   textAlign: TextAlign.center,
+                  maxLines: 3,
                 ),
                 const SizedBox(height: 8),
                 Text(
-                  music?.artist ?? '艺术家',
+                  music != null
+                      ? (isSinglePage
+                            ? music.artist
+                            : '${music.artist} - ${music.title}')
+                      : '艺术家',
                   style: Theme.of(
                     context,
                   ).textTheme.bodyLarge?.copyWith(color: Colors.grey[600]),
+                  textAlign: TextAlign.center,
+                  maxLines: 2,
                 ),
               ],
             ),
