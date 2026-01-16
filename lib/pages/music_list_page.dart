@@ -1,4 +1,3 @@
-import 'dart:io';
 import 'package:busic/models/user_pref.dart';
 import 'package:busic/providers/pref_provider.dart';
 import 'package:flutter/material.dart';
@@ -8,6 +7,7 @@ import '../providers/music_list_provider.dart';
 import '../providers/audio_player_provider.dart';
 import 'play_page.dart';
 import 'user_info_page.dart';
+import 'settings_page.dart';
 import 'package:cached_network_image/cached_network_image.dart';
 import './BuildDrawerHeader.dart';
 import 'package:file_picker/file_picker.dart';
@@ -35,7 +35,7 @@ class _MusicListPageState extends ConsumerState<MusicListPage> {
   Widget build(BuildContext context) {
     final musicListAsync = ref.watch(musicListProvider);
     final currentPlayingIndex = ref.watch(currentPlayingIndexProvider);
-    final playingState = ref.watch(playingStateProvider);
+    // final playingState = ref.watch(playingStateProvider);
     final modeAsync = ref.watch(UserPrefProvider);
     final mode = modeAsync.hasValue
         ? modeAsync.requireValue.musicListMode
@@ -243,10 +243,10 @@ class _MusicListPageState extends ConsumerState<MusicListPage> {
               title: const Text('设置'),
               onTap: () {
                 Navigator.pop(context);
-                // TODO: 跳转到设置页面
-                ScaffoldMessenger.of(
+                Navigator.push(
                   context,
-                ).showSnackBar(const SnackBar(content: Text('设置功能待开发')));
+                  MaterialPageRoute(builder: (context) => const SettingsPage()),
+                );
               },
             ),
           ],
@@ -503,21 +503,6 @@ class _MusicListPageState extends ConsumerState<MusicListPage> {
       },
     );
   }
-}
-
-Widget _buildOldMusicList(
-  BuildContext context,
-  WidgetRef ref,
-  AsyncValue<List<MusicListItemBv>> musicListAsync,
-) {
-  final currentPlayingIndex = ref.watch(currentPlayingIndexProvider);
-  final playingState = ref.watch(playingStateProvider);
-
-  return musicListAsync.when(
-    data: (_) => const SizedBox.shrink(),
-    loading: () => const SizedBox.shrink(),
-    error: (_, _) => const SizedBox.shrink(),
-  );
 }
 
 // 底部音乐控制栏
