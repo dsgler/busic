@@ -13,11 +13,26 @@ import './BuildDrawerHeader.dart';
 import 'package:file_picker/file_picker.dart';
 import 'package:path/path.dart' as path;
 
-class MusicListPage extends ConsumerWidget {
+class MusicListPage extends ConsumerStatefulWidget {
   const MusicListPage({super.key});
 
   @override
-  Widget build(BuildContext context, WidgetRef ref) {
+  ConsumerState<MusicListPage> createState() => _MusicListPageState();
+}
+
+class _MusicListPageState extends ConsumerState<MusicListPage> {
+  final TextEditingController _searchController = TextEditingController();
+  String _searchKeyword = '';
+  bool _showSearch = false;
+
+  @override
+  void dispose() {
+    _searchController.dispose();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
     final musicListAsync = ref.watch(musicListProvider);
     final currentPlayingIndex = ref.watch(currentPlayingIndexProvider);
     final playingState = ref.watch(playingStateProvider);
@@ -125,9 +140,21 @@ class MusicListPage extends ConsumerWidget {
           MusicListMode.favList => '收藏夹',
           MusicListMode.seasonsArchives => '视频合辑',
         }),
-        centerTitle: true,
+        // centerTitle: true,
         backgroundColor: Theme.of(context).colorScheme.inversePrimary,
         actions: [
+          IconButton(
+            icon: Icon(_showSearch ? Icons.search_off : Icons.search),
+            onPressed: () {
+              setState(() {
+                _showSearch = !_showSearch;
+                if (!_showSearch) {
+                  _searchController.clear();
+                  _searchKeyword = '';
+                }
+              });
+            },
+          ),
           if (mode == MusicListMode.defaultMode ||
               (musicListAsync.hasValue && musicListAsync.requireValue.isEmpty))
             IconButton(icon: const Icon(Icons.add), onPressed: onTapAdd)
@@ -227,156 +254,44 @@ class MusicListPage extends ConsumerWidget {
       ),
       body: Column(
         children: [
-          // 音乐列表
-          Expanded(
-            child: musicListAsync.when(
-              data: (musicList) => musicList.isEmpty
-                  ? Center(
-                      child: Column(
-                        mainAxisAlignment: MainAxisAlignment.center,
-                        children: [
-                          Icon(
-                            Icons.music_note_outlined,
-                            size: 80,
-                            color: Colors.grey[400],
-                          ),
-                          const SizedBox(height: 16),
-                          Text(
-                            '暂无音乐',
-                            style: TextStyle(
-                              fontSize: 18,
-                              color: Colors.grey[600],
-                            ),
-                          ),
-                        ],
-                      ),
-                    )
-                  : Padding(
-                      padding: const EdgeInsets.only(right: 8),
-                      child: Scrollbar(
-                        interactive: true,
-                        thickness: 6,
-                        // thumbVisibility: true,
-
-                        // trackVisibility: true,
-                        child: ListView.builder(
-                          itemCount: musicList.length,
-
-                          itemBuilder: (context, index) {
-                            final music = musicList[index];
-                            final isCurrentPlaying =
-                                currentPlayingIndex == index;
-                            final isSinglePage =
-                                music.subTitle == "" ||
-                                music.title == music.subTitle;
-
-                            return ListTile(
-                              tileColor: isCurrentPlaying
-                                  ? Theme.of(
-                                      context,
-                                    ).colorScheme.surfaceContainerHighest
-                                  : null,
-                              leading: Container(
-                                width: 50,
-                                height: 50,
-                                decoration: BoxDecoration(
-                                  color: Colors.grey[300],
-                                  borderRadius: BorderRadius.circular(8),
-                                ),
-                                child: music.coverUrl != null
-                                    ? ClipRRect(
-                                        borderRadius: BorderRadius.circular(8),
-                                        child: CachedNetworkImage(
-                                          imageUrl: music.coverUrl!,
-                                          fit: BoxFit.cover,
-                                          errorWidget:
-                                              (context, error, stackTrace) {
-                                                return Icon(
-                                                  Icons.music_note,
-                                                  color: Colors.grey[600],
-                                                );
-                                              },
-                                        ),
-                                      )
-                                    : Icon(
-                                        Icons.music_note,
-                                        color: Colors.grey[600],
-                                      ),
-                              ),
-                              title: Text(
-                                isSinglePage ? music.title : music.subTitle,
-                                style: TextStyle(
-                                  color: isCurrentPlaying
-                                      ? Theme.of(context).colorScheme.primary
-                                      : null,
-                                  fontWeight: isCurrentPlaying
-                                      ? FontWeight.bold
-                                      : null,
-                                ),
-                                maxLines: 2,
-                              ),
-                              subtitle: Text(
-                                isSinglePage
-                                    ? music.artist
-                                    : '${music.artist} - ${music.title}',
-                                maxLines: 2,
-                              ),
-                              trailing: isCurrentPlaying
-                                  ? playingState.when(
-                                      data: (isPlaying) => Icon(
-                                        isPlaying
-                                            ? Icons.volume_up
-                                            : Icons.pause,
-                                        color: Theme.of(
-                                          context,
-                                        ).colorScheme.primary,
-                                      ),
-                                      loading: () => const SizedBox(
-                                        width: 20,
-                                        height: 20,
-                                        child: CircularProgressIndicator(
-                                          strokeWidth: 2,
-                                        ),
-                                      ),
-                                      error: (_, _) => const Icon(Icons.error),
-                                    )
-                                  : null,
-                              onTap: () async {
-                                // 如果点击的是当前正在播放的歌曲，只切换播放/暂停状态
-                                if (currentPlayingIndex == index) {
-                                  return;
-                                }
-
-                                // 设置当前播放的音乐索引
-                                ref
-                                    .read(currentPlayingIndexProvider.notifier)
-                                    .setIndex(index);
-                              },
-                              onLongPress: () async {
-                                await _showMusicMenu(context, music);
-                              },
-                            );
+          // 搜索框
+          if (_showSearch)
+            Padding(
+              padding: const EdgeInsets.all(8.0),
+              child: TextField(
+                controller: _searchController,
+                autofocus: true,
+                decoration: InputDecoration(
+                  hintText: '搜索音乐、艺术家或BV号...',
+                  prefixIcon: const Icon(Icons.search),
+                  suffixIcon: _searchKeyword.isNotEmpty
+                      ? IconButton(
+                          icon: const Icon(Icons.clear),
+                          onPressed: () {
+                            _searchController.clear();
+                            setState(() {
+                              _searchKeyword = '';
+                            });
                           },
-                        ),
-                      ),
-                    ),
-              loading: () => const Center(child: CircularProgressIndicator()),
-              error: (error, stack) => Center(
-                child: Column(
-                  mainAxisAlignment: MainAxisAlignment.center,
-                  children: [
-                    const Icon(
-                      Icons.error_outline,
-                      size: 60,
-                      color: Colors.red,
-                    ),
-                    const SizedBox(height: 16),
-                    Text('加载失败: $error'),
-                  ],
+                        )
+                      : null,
+                  border: OutlineInputBorder(
+                    borderRadius: BorderRadius.circular(12),
+                  ),
+                  contentPadding: const EdgeInsets.symmetric(
+                    horizontal: 16,
+                    vertical: 12,
+                  ),
                 ),
+                onChanged: (value) {
+                  setState(() {
+                    _searchKeyword = value;
+                  });
+                },
               ),
             ),
-          ),
+          // 音乐列表
+          Expanded(child: _buildMusicList(musicListAsync, mode)),
 
           // 底部音乐控制栏
           if (currentPlayingIndex != null)
@@ -420,6 +335,189 @@ class MusicListPage extends ConsumerWidget {
       ),
     );
   }
+
+  Widget _buildMusicList(
+    AsyncValue<List<MusicListItemBv>> musicListAsync,
+    MusicListMode mode,
+  ) {
+    return FutureBuilder<List<MusicListItemBv>>(
+      future: _searchKeyword.isEmpty
+          ? Future.value(musicListAsync.value ?? [])
+          : ref
+                .read(musicDatabaseProvider)
+                .searchMusicList(_searchKeyword, category: mode),
+      builder: (context, snapshot) {
+        if (_searchKeyword.isNotEmpty &&
+            snapshot.connectionState == ConnectionState.waiting) {
+          return const Center(child: CircularProgressIndicator());
+        }
+
+        final musicList = snapshot.data ?? musicListAsync.value ?? [];
+        final currentPlayingIndex = ref.watch(currentPlayingIndexProvider);
+        final playingState = ref.watch(playingStateProvider);
+
+        return musicListAsync.when(
+          data: (_) => musicList.isEmpty
+              ? Center(
+                  child: Column(
+                    mainAxisAlignment: MainAxisAlignment.center,
+                    children: [
+                      Icon(
+                        _searchKeyword.isEmpty
+                            ? Icons.music_note_outlined
+                            : Icons.search_off,
+                        size: 80,
+                        color: Colors.grey[400],
+                      ),
+                      const SizedBox(height: 16),
+                      Text(
+                        _searchKeyword.isEmpty ? '暂无音乐' : '未找到匹配的音乐',
+                        style: TextStyle(fontSize: 18, color: Colors.grey[600]),
+                      ),
+                    ],
+                  ),
+                )
+              : Padding(
+                  padding: const EdgeInsets.only(right: 8),
+                  child: Scrollbar(
+                    interactive: true,
+                    thickness: 6,
+                    child: ListView.builder(
+                      itemCount: musicList.length,
+                      itemBuilder: (context, index) {
+                        final music = musicList[index];
+                        final originalIndex =
+                            musicListAsync.value?.indexWhere(
+                              (m) => m.bvid == music.bvid && m.cid == music.cid,
+                            ) ??
+                            -1;
+                        final isCurrentPlaying =
+                            originalIndex != -1 &&
+                            currentPlayingIndex == originalIndex;
+                        final isSinglePage =
+                            music.subTitle == "" ||
+                            music.title == music.subTitle;
+
+                        return _buildMusicTile(
+                          context,
+                          music,
+                          isCurrentPlaying,
+                          isSinglePage,
+                          playingState,
+                          originalIndex,
+                        );
+                      },
+                    ),
+                  ),
+                ),
+          loading: () => const Center(child: CircularProgressIndicator()),
+          error: (error, stack) => Center(
+            child: Column(
+              mainAxisAlignment: MainAxisAlignment.center,
+              children: [
+                const Icon(Icons.error_outline, size: 60, color: Colors.red),
+                const SizedBox(height: 16),
+                Text('加载失败: $error'),
+              ],
+            ),
+          ),
+        );
+      },
+    );
+  }
+
+  Widget _buildMusicTile(
+    BuildContext context,
+    MusicListItemBv music,
+    bool isCurrentPlaying,
+    bool isSinglePage,
+    AsyncValue<bool> playingState,
+    int originalIndex,
+  ) {
+    return ListTile(
+      tileColor: isCurrentPlaying
+          ? Theme.of(context).colorScheme.surfaceContainerHighest
+          : null,
+      leading: Container(
+        width: 50,
+        height: 50,
+        decoration: BoxDecoration(
+          color: Colors.grey[300],
+          borderRadius: BorderRadius.circular(8),
+        ),
+        child: music.coverUrl != null
+            ? ClipRRect(
+                borderRadius: BorderRadius.circular(8),
+                child: CachedNetworkImage(
+                  imageUrl: music.coverUrl!,
+                  fit: BoxFit.cover,
+                  errorWidget: (context, error, stackTrace) {
+                    return Icon(Icons.music_note, color: Colors.grey[600]);
+                  },
+                ),
+              )
+            : Icon(Icons.music_note, color: Colors.grey[600]),
+      ),
+      title: Text(
+        isSinglePage ? music.title : music.subTitle,
+        style: TextStyle(
+          color: isCurrentPlaying
+              ? Theme.of(context).colorScheme.primary
+              : null,
+          fontWeight: isCurrentPlaying ? FontWeight.bold : null,
+        ),
+        maxLines: 2,
+      ),
+      subtitle: Text(
+        isSinglePage ? music.artist : '${music.artist} - ${music.title}',
+        maxLines: 2,
+      ),
+      trailing: isCurrentPlaying
+          ? playingState.when(
+              data: (isPlaying) => Icon(
+                isPlaying ? Icons.volume_up : Icons.pause,
+                color: Theme.of(context).colorScheme.primary,
+              ),
+              loading: () => const SizedBox(
+                width: 20,
+                height: 20,
+                child: CircularProgressIndicator(strokeWidth: 2),
+              ),
+              error: (_, _) => const Icon(Icons.error),
+            )
+          : null,
+      onTap: () async {
+        if (originalIndex == -1) return;
+
+        // 如果点击的是当前正在播放的歌曲，只切换播放/暂停状态
+        final currentPlayingIndex = ref.read(currentPlayingIndexProvider);
+        if (currentPlayingIndex == originalIndex) {
+          return;
+        }
+
+        // 设置当前播放的音乐索引
+        ref.read(currentPlayingIndexProvider.notifier).setIndex(originalIndex);
+      },
+      onLongPress: () async {
+        await _showMusicMenu(context, music);
+      },
+    );
+  }
+}
+
+Widget _buildOldMusicList(
+  BuildContext context,
+  WidgetRef ref,
+  AsyncValue<List<MusicListItemBv>> musicListAsync,
+) {
+  final currentPlayingIndex = ref.watch(currentPlayingIndexProvider);
+  final playingState = ref.watch(playingStateProvider);
+
+  return musicListAsync.when(
+    data: (_) => const SizedBox.shrink(),
+    loading: () => const SizedBox.shrink(),
+    error: (_, _) => const SizedBox.shrink(),
+  );
 }
 
 // 底部音乐控制栏

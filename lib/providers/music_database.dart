@@ -154,6 +154,36 @@ class MusicDatabase extends _$MusicDatabase {
       musicItems,
     )..where((tbl) => tbl.category.equals(category.jsonValue))).go();
   }
+
+  /// 模糊搜索音乐项（搜索title, subtitle, artist, bvid）
+  Future<List<MusicListItemBv>> searchMusicList(
+    String keyword, {
+    MusicListMode? category,
+  }) async {
+    if (keyword.isEmpty) {
+      return getMusicList(category: category);
+    }
+
+    final query = select(musicItems)..orderBy([(t) => OrderingTerm.asc(t.id)]);
+
+    // 按category过滤
+    if (category != null) {
+      query.where((tbl) => tbl.category.equals(category.jsonValue));
+    }
+
+    // 模糊搜索：title, subtitle, artist, bvid
+    final searchPattern = '%$keyword%';
+    query.where(
+      (tbl) =>
+          tbl.title.like(searchPattern) |
+          tbl.subTitle.like(searchPattern) |
+          tbl.artist.like(searchPattern) |
+          tbl.bvid.like(searchPattern),
+    );
+
+    final items = await query.get();
+    return items.map((item) => _toMusicItem(item)).toList();
+  }
 }
 
 /// 打开数据库连接
