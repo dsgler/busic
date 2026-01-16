@@ -43,9 +43,8 @@ class MusicListNotifier extends AsyncNotifier<List<MusicListItemBv>> {
       throw 'favListId 不能为空';
     }
 
-    await clearList(category: MusicListMode.favList);
-
-    await fetchFavList(mid, onProgress: onProgress).then((list) {
+    await fetchFavList(mid, onProgress: onProgress).then((list) async {
+      await clearList(category: MusicListMode.favList);
       for (var a in list) {
         addMusic(a);
       }
@@ -58,9 +57,8 @@ class MusicListNotifier extends AsyncNotifier<List<MusicListItemBv>> {
       throw 'seaListId 不能为空';
     }
 
-    await clearList(category: MusicListMode.seasonsArchives);
-
-    await fetchSeaList(mid, onProgress: onProgress).then((list) {
+    await fetchSeaList(mid, onProgress: onProgress).then((list) async {
+      await clearList(category: MusicListMode.seasonsArchives);
       for (var a in list) {
         addMusic(a);
       }

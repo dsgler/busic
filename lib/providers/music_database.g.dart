@@ -49,6 +49,17 @@ class $MusicItemsTable extends MusicItems
     type: DriftSqlType.string,
     requiredDuringInsert: true,
   );
+  static const VerificationMeta _subTitleMeta = const VerificationMeta(
+    'subTitle',
+  );
+  @override
+  late final GeneratedColumn<String> subTitle = GeneratedColumn<String>(
+    'sub_title',
+    aliasedName,
+    false,
+    type: DriftSqlType.string,
+    requiredDuringInsert: true,
+  );
   static const VerificationMeta _artistMeta = const VerificationMeta('artist');
   @override
   late final GeneratedColumn<String> artist = GeneratedColumn<String>(
@@ -87,6 +98,7 @@ class $MusicItemsTable extends MusicItems
     bvid,
     cid,
     title,
+    subTitle,
     artist,
     coverUrl,
     category,
@@ -129,6 +141,14 @@ class $MusicItemsTable extends MusicItems
       );
     } else if (isInserting) {
       context.missing(_titleMeta);
+    }
+    if (data.containsKey('sub_title')) {
+      context.handle(
+        _subTitleMeta,
+        subTitle.isAcceptableOrUnknown(data['sub_title']!, _subTitleMeta),
+      );
+    } else if (isInserting) {
+      context.missing(_subTitleMeta);
     }
     if (data.containsKey('artist')) {
       context.handle(
@@ -175,6 +195,10 @@ class $MusicItemsTable extends MusicItems
         DriftSqlType.string,
         data['${effectivePrefix}title'],
       )!,
+      subTitle: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}sub_title'],
+      )!,
       artist: attachedDatabase.typeMapping.read(
         DriftSqlType.string,
         data['${effectivePrefix}artist'],
@@ -201,6 +225,7 @@ class MusicItem extends DataClass implements Insertable<MusicItem> {
   final String bvid;
   final int cid;
   final String title;
+  final String subTitle;
   final String artist;
   final String? coverUrl;
   final String category;
@@ -209,6 +234,7 @@ class MusicItem extends DataClass implements Insertable<MusicItem> {
     required this.bvid,
     required this.cid,
     required this.title,
+    required this.subTitle,
     required this.artist,
     this.coverUrl,
     required this.category,
@@ -220,6 +246,7 @@ class MusicItem extends DataClass implements Insertable<MusicItem> {
     map['bvid'] = Variable<String>(bvid);
     map['cid'] = Variable<int>(cid);
     map['title'] = Variable<String>(title);
+    map['sub_title'] = Variable<String>(subTitle);
     map['artist'] = Variable<String>(artist);
     if (!nullToAbsent || coverUrl != null) {
       map['cover_url'] = Variable<String>(coverUrl);
@@ -234,6 +261,7 @@ class MusicItem extends DataClass implements Insertable<MusicItem> {
       bvid: Value(bvid),
       cid: Value(cid),
       title: Value(title),
+      subTitle: Value(subTitle),
       artist: Value(artist),
       coverUrl: coverUrl == null && nullToAbsent
           ? const Value.absent()
@@ -252,6 +280,7 @@ class MusicItem extends DataClass implements Insertable<MusicItem> {
       bvid: serializer.fromJson<String>(json['bvid']),
       cid: serializer.fromJson<int>(json['cid']),
       title: serializer.fromJson<String>(json['title']),
+      subTitle: serializer.fromJson<String>(json['subTitle']),
       artist: serializer.fromJson<String>(json['artist']),
       coverUrl: serializer.fromJson<String?>(json['coverUrl']),
       category: serializer.fromJson<String>(json['category']),
@@ -265,6 +294,7 @@ class MusicItem extends DataClass implements Insertable<MusicItem> {
       'bvid': serializer.toJson<String>(bvid),
       'cid': serializer.toJson<int>(cid),
       'title': serializer.toJson<String>(title),
+      'subTitle': serializer.toJson<String>(subTitle),
       'artist': serializer.toJson<String>(artist),
       'coverUrl': serializer.toJson<String?>(coverUrl),
       'category': serializer.toJson<String>(category),
@@ -276,6 +306,7 @@ class MusicItem extends DataClass implements Insertable<MusicItem> {
     String? bvid,
     int? cid,
     String? title,
+    String? subTitle,
     String? artist,
     Value<String?> coverUrl = const Value.absent(),
     String? category,
@@ -284,6 +315,7 @@ class MusicItem extends DataClass implements Insertable<MusicItem> {
     bvid: bvid ?? this.bvid,
     cid: cid ?? this.cid,
     title: title ?? this.title,
+    subTitle: subTitle ?? this.subTitle,
     artist: artist ?? this.artist,
     coverUrl: coverUrl.present ? coverUrl.value : this.coverUrl,
     category: category ?? this.category,
@@ -294,6 +326,7 @@ class MusicItem extends DataClass implements Insertable<MusicItem> {
       bvid: data.bvid.present ? data.bvid.value : this.bvid,
       cid: data.cid.present ? data.cid.value : this.cid,
       title: data.title.present ? data.title.value : this.title,
+      subTitle: data.subTitle.present ? data.subTitle.value : this.subTitle,
       artist: data.artist.present ? data.artist.value : this.artist,
       coverUrl: data.coverUrl.present ? data.coverUrl.value : this.coverUrl,
       category: data.category.present ? data.category.value : this.category,
@@ -307,6 +340,7 @@ class MusicItem extends DataClass implements Insertable<MusicItem> {
           ..write('bvid: $bvid, ')
           ..write('cid: $cid, ')
           ..write('title: $title, ')
+          ..write('subTitle: $subTitle, ')
           ..write('artist: $artist, ')
           ..write('coverUrl: $coverUrl, ')
           ..write('category: $category')
@@ -316,7 +350,7 @@ class MusicItem extends DataClass implements Insertable<MusicItem> {
 
   @override
   int get hashCode =>
-      Object.hash(id, bvid, cid, title, artist, coverUrl, category);
+      Object.hash(id, bvid, cid, title, subTitle, artist, coverUrl, category);
   @override
   bool operator ==(Object other) =>
       identical(this, other) ||
@@ -325,6 +359,7 @@ class MusicItem extends DataClass implements Insertable<MusicItem> {
           other.bvid == this.bvid &&
           other.cid == this.cid &&
           other.title == this.title &&
+          other.subTitle == this.subTitle &&
           other.artist == this.artist &&
           other.coverUrl == this.coverUrl &&
           other.category == this.category);
@@ -335,6 +370,7 @@ class MusicItemsCompanion extends UpdateCompanion<MusicItem> {
   final Value<String> bvid;
   final Value<int> cid;
   final Value<String> title;
+  final Value<String> subTitle;
   final Value<String> artist;
   final Value<String?> coverUrl;
   final Value<String> category;
@@ -343,6 +379,7 @@ class MusicItemsCompanion extends UpdateCompanion<MusicItem> {
     this.bvid = const Value.absent(),
     this.cid = const Value.absent(),
     this.title = const Value.absent(),
+    this.subTitle = const Value.absent(),
     this.artist = const Value.absent(),
     this.coverUrl = const Value.absent(),
     this.category = const Value.absent(),
@@ -352,18 +389,21 @@ class MusicItemsCompanion extends UpdateCompanion<MusicItem> {
     required String bvid,
     required int cid,
     required String title,
+    required String subTitle,
     required String artist,
     this.coverUrl = const Value.absent(),
     this.category = const Value.absent(),
   }) : bvid = Value(bvid),
        cid = Value(cid),
        title = Value(title),
+       subTitle = Value(subTitle),
        artist = Value(artist);
   static Insertable<MusicItem> custom({
     Expression<int>? id,
     Expression<String>? bvid,
     Expression<int>? cid,
     Expression<String>? title,
+    Expression<String>? subTitle,
     Expression<String>? artist,
     Expression<String>? coverUrl,
     Expression<String>? category,
@@ -373,6 +413,7 @@ class MusicItemsCompanion extends UpdateCompanion<MusicItem> {
       if (bvid != null) 'bvid': bvid,
       if (cid != null) 'cid': cid,
       if (title != null) 'title': title,
+      if (subTitle != null) 'sub_title': subTitle,
       if (artist != null) 'artist': artist,
       if (coverUrl != null) 'cover_url': coverUrl,
       if (category != null) 'category': category,
@@ -384,6 +425,7 @@ class MusicItemsCompanion extends UpdateCompanion<MusicItem> {
     Value<String>? bvid,
     Value<int>? cid,
     Value<String>? title,
+    Value<String>? subTitle,
     Value<String>? artist,
     Value<String?>? coverUrl,
     Value<String>? category,
@@ -393,6 +435,7 @@ class MusicItemsCompanion extends UpdateCompanion<MusicItem> {
       bvid: bvid ?? this.bvid,
       cid: cid ?? this.cid,
       title: title ?? this.title,
+      subTitle: subTitle ?? this.subTitle,
       artist: artist ?? this.artist,
       coverUrl: coverUrl ?? this.coverUrl,
       category: category ?? this.category,
@@ -414,6 +457,9 @@ class MusicItemsCompanion extends UpdateCompanion<MusicItem> {
     if (title.present) {
       map['title'] = Variable<String>(title.value);
     }
+    if (subTitle.present) {
+      map['sub_title'] = Variable<String>(subTitle.value);
+    }
     if (artist.present) {
       map['artist'] = Variable<String>(artist.value);
     }
@@ -433,6 +479,7 @@ class MusicItemsCompanion extends UpdateCompanion<MusicItem> {
           ..write('bvid: $bvid, ')
           ..write('cid: $cid, ')
           ..write('title: $title, ')
+          ..write('subTitle: $subTitle, ')
           ..write('artist: $artist, ')
           ..write('coverUrl: $coverUrl, ')
           ..write('category: $category')
@@ -458,6 +505,7 @@ typedef $$MusicItemsTableCreateCompanionBuilder =
       required String bvid,
       required int cid,
       required String title,
+      required String subTitle,
       required String artist,
       Value<String?> coverUrl,
       Value<String> category,
@@ -468,6 +516,7 @@ typedef $$MusicItemsTableUpdateCompanionBuilder =
       Value<String> bvid,
       Value<int> cid,
       Value<String> title,
+      Value<String> subTitle,
       Value<String> artist,
       Value<String?> coverUrl,
       Value<String> category,
@@ -499,6 +548,11 @@ class $$MusicItemsTableFilterComposer
 
   ColumnFilters<String> get title => $composableBuilder(
     column: $table.title,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<String> get subTitle => $composableBuilder(
+    column: $table.subTitle,
     builder: (column) => ColumnFilters(column),
   );
 
@@ -547,6 +601,11 @@ class $$MusicItemsTableOrderingComposer
     builder: (column) => ColumnOrderings(column),
   );
 
+  ColumnOrderings<String> get subTitle => $composableBuilder(
+    column: $table.subTitle,
+    builder: (column) => ColumnOrderings(column),
+  );
+
   ColumnOrderings<String> get artist => $composableBuilder(
     column: $table.artist,
     builder: (column) => ColumnOrderings(column),
@@ -583,6 +642,9 @@ class $$MusicItemsTableAnnotationComposer
 
   GeneratedColumn<String> get title =>
       $composableBuilder(column: $table.title, builder: (column) => column);
+
+  GeneratedColumn<String> get subTitle =>
+      $composableBuilder(column: $table.subTitle, builder: (column) => column);
 
   GeneratedColumn<String> get artist =>
       $composableBuilder(column: $table.artist, builder: (column) => column);
@@ -629,6 +691,7 @@ class $$MusicItemsTableTableManager
                 Value<String> bvid = const Value.absent(),
                 Value<int> cid = const Value.absent(),
                 Value<String> title = const Value.absent(),
+                Value<String> subTitle = const Value.absent(),
                 Value<String> artist = const Value.absent(),
                 Value<String?> coverUrl = const Value.absent(),
                 Value<String> category = const Value.absent(),
@@ -637,6 +700,7 @@ class $$MusicItemsTableTableManager
                 bvid: bvid,
                 cid: cid,
                 title: title,
+                subTitle: subTitle,
                 artist: artist,
                 coverUrl: coverUrl,
                 category: category,
@@ -647,6 +711,7 @@ class $$MusicItemsTableTableManager
                 required String bvid,
                 required int cid,
                 required String title,
+                required String subTitle,
                 required String artist,
                 Value<String?> coverUrl = const Value.absent(),
                 Value<String> category = const Value.absent(),
@@ -655,6 +720,7 @@ class $$MusicItemsTableTableManager
                 bvid: bvid,
                 cid: cid,
                 title: title,
+                subTitle: subTitle,
                 artist: artist,
                 coverUrl: coverUrl,
                 category: category,

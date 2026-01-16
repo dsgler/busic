@@ -17,6 +17,7 @@ class MusicListItemBv {
   final String bvid;
   final int cid;
   final String title;
+  final String subTitle;
   final String artist;
   final String? coverUrl;
   final MusicListMode category;
@@ -41,6 +42,7 @@ class MusicListItemBv {
     this.cid = 0,
     required this.title,
     this.artist = '未知艺术家',
+    this.subTitle = '',
     this.coverUrl,
     this.category = MusicListMode.defaultMode,
     Audio? audioObj,
@@ -63,6 +65,7 @@ class MusicListItemBv {
             coverUrl: p.firstFrame,
             artist: info.data.owner.name,
             category: mode,
+            subTitle: p.pagePart,
           ),
         )
         .toList();

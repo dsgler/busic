@@ -14,6 +14,7 @@ class MusicItems extends Table {
   TextColumn get bvid => text()();
   IntColumn get cid => integer()();
   TextColumn get title => text()();
+  TextColumn get subTitle => text()();
   TextColumn get artist => text()();
   TextColumn get coverUrl => text().nullable()();
   TextColumn get category => text().withDefault(const Constant('default'))();
@@ -25,7 +26,7 @@ class MusicDatabase extends _$MusicDatabase {
   MusicDatabase() : super(_openConnection());
 
   @override
-  int get schemaVersion => 4;
+  int get schemaVersion => 5;
 
   @override
   MigrationStrategy get migration {
@@ -36,6 +37,7 @@ class MusicDatabase extends _$MusicDatabase {
       onUpgrade: (Migrator m, int from, int to) async {
         if (from < schemaVersion) {
           await m.drop(musicItems);
+          await m.createTable(musicItems);
         }
       },
     );
@@ -85,6 +87,7 @@ class MusicDatabase extends _$MusicDatabase {
       bvid: item.bvid,
       cid: item.cid,
       title: item.title,
+      subTitle: item.subTitle,
       artist: item.artist,
       coverUrl: item.coverUrl,
       category: MusicListMode.fromString(item.category),
@@ -97,6 +100,7 @@ class MusicDatabase extends _$MusicDatabase {
       bvid: music.bvid,
       cid: music.cid,
       title: music.title,
+      subTitle: music.subTitle,
       artist: music.artist,
       coverUrl: Value(music.coverUrl),
       category: Value(music.category.jsonValue),

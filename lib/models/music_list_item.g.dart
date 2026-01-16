@@ -12,6 +12,7 @@ MusicListItemBv _$MusicListItemBvFromJson(Map<String, dynamic> json) =>
       cid: (json['cid'] as num?)?.toInt() ?? 0,
       title: json['title'] as String,
       artist: json['artist'] as String? ?? '未知艺术家',
+      subTitle: json['subTitle'] as String? ?? '',
       coverUrl: json['coverUrl'] as String?,
       category:
           $enumDecodeNullable(_$MusicListModeEnumMap, json['category']) ??
@@ -24,6 +25,7 @@ Map<String, dynamic> _$MusicListItemBvToJson(MusicListItemBv instance) =>
       'bvid': instance.bvid,
       'cid': instance.cid,
       'title': instance.title,
+      'subTitle': instance.subTitle,
       'artist': instance.artist,
       'coverUrl': instance.coverUrl,
       'category': _$MusicListModeEnumMap[instance.category]!,

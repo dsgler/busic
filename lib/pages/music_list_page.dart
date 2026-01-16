@@ -252,7 +252,10 @@ class MusicListPage extends ConsumerWidget {
                       padding: const EdgeInsets.only(right: 8),
                       child: Scrollbar(
                         interactive: true,
+                        thickness: 6,
+                        // thumbVisibility: true,
 
+                        // trackVisibility: true,
                         child: ListView.builder(
                           itemCount: musicList.length,
 
@@ -260,6 +263,9 @@ class MusicListPage extends ConsumerWidget {
                             final music = musicList[index];
                             final isCurrentPlaying =
                                 currentPlayingIndex == index;
+                            final isSinglePage =
+                                music.subTitle == "" ||
+                                music.title == music.subTitle;
 
                             return ListTile(
                               tileColor: isCurrentPlaying
@@ -295,7 +301,7 @@ class MusicListPage extends ConsumerWidget {
                                       ),
                               ),
                               title: Text(
-                                music.title,
+                                isSinglePage ? music.title : music.subTitle,
                                 style: TextStyle(
                                   color: isCurrentPlaying
                                       ? Theme.of(context).colorScheme.primary
@@ -304,8 +310,14 @@ class MusicListPage extends ConsumerWidget {
                                       ? FontWeight.bold
                                       : null,
                                 ),
+                                maxLines: 2,
                               ),
-                              subtitle: Text(music.artist),
+                              subtitle: Text(
+                                isSinglePage
+                                    ? music.artist
+                                    : '${music.artist} - ${music.title}',
+                                maxLines: 2,
+                              ),
                               trailing: isCurrentPlaying
                                   ? playingState.when(
                                       data: (isPlaying) => Icon(
