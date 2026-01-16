@@ -1,3 +1,4 @@
+import 'dart:io';
 import 'package:busic/models/user_pref.dart';
 import 'package:busic/providers/pref_provider.dart';
 import 'package:flutter/material.dart';
@@ -9,6 +10,8 @@ import 'play_page.dart';
 import 'user_info_page.dart';
 import 'package:cached_network_image/cached_network_image.dart';
 import './BuildDrawerHeader.dart';
+import 'package:file_picker/file_picker.dart';
+import 'package:path/path.dart' as path;
 
 class MusicListPage extends ConsumerWidget {
   const MusicListPage({super.key});
@@ -349,6 +352,9 @@ class MusicListPage extends ConsumerWidget {
                                     .read(currentPlayingIndexProvider.notifier)
                                     .setIndex(index);
                               },
+                              onLongPress: () async {
+                                await _showMusicMenu(context, music);
+                              },
                             );
                           },
                         ),
@@ -577,4 +583,143 @@ class _MusicControlBar extends ConsumerWidget {
   }
 
   /// 构建 Drawer Header
+}
+
+/// 显示音乐菜单
+Future<void> _showMusicMenu(BuildContext context, MusicListItemBv music) async {
+  await showModalBottomSheet(
+    context: context,
+    builder: (context) {
+      return SafeArea(
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            ListTile(
+              leading: const Icon(Icons.save_alt),
+              title: const Text('将缓存保存到本地'),
+              onTap: () async {
+                Navigator.pop(context);
+                await _saveCacheToLocal(context, music);
+              },
+            ),
+            ListTile(
+              leading: const Icon(Icons.delete),
+              title: const Text('删除缓存'),
+              onTap: () async {
+                Navigator.pop(context);
+                await _deleteCache(context, music);
+              },
+            ),
+          ],
+        ),
+      );
+    },
+  );
+}
+
+/// 将缓存保存到本地
+Future<void> _saveCacheToLocal(
+  BuildContext context,
+  MusicListItemBv music,
+) async {
+  try {
+    // 获取缓存文件
+    final cacheFile = await music.getCacheFile();
+
+    // 检查缓存文件是否存在
+    if (!await cacheFile.exists()) {
+      if (context.mounted) {
+        ScaffoldMessenger.of(
+          context,
+        ).showSnackBar(const SnackBar(content: Text('缓存文件不存在，请先播放该音乐')));
+      }
+      return;
+    }
+
+    // 读取缓存文件的字节数据
+    final bytes = await cacheFile.readAsBytes();
+
+    // 使用 file_picker 选择保存位置
+    String? outputPath = await FilePicker.platform.saveFile(
+      dialogTitle: '保存音乐文件',
+      fileName: '${music.title.replaceAll(RegExp(r'[<>:"/\\|?*]'), '_')}.m4s',
+      type: FileType.audio,
+      bytes: bytes,
+    );
+
+    if (outputPath == null) {
+      // 用户取消了
+      return;
+    }
+
+    if (context.mounted) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text('已保存到 ${path.basename(outputPath)}')),
+      );
+    }
+  } catch (e) {
+    if (context.mounted) {
+      ScaffoldMessenger.of(
+        context,
+      ).showSnackBar(SnackBar(content: Text('保存失败: $e')));
+    }
+  }
+}
+
+/// 删除缓存
+Future<void> _deleteCache(BuildContext context, MusicListItemBv music) async {
+  try {
+    // 获取缓存文件
+    final cacheFile = await music.getCacheFile();
+
+    // 检查缓存文件是否存在
+    if (!await cacheFile.exists()) {
+      if (context.mounted) {
+        ScaffoldMessenger.of(
+          context,
+        ).showSnackBar(const SnackBar(content: Text('缓存文件不存在')));
+      }
+      return;
+    }
+
+    // 确认删除
+    final confirmed = await showDialog<bool>(
+      context: context,
+      builder: (context) {
+        return AlertDialog(
+          title: const Text('确认删除'),
+          content: const Text('确定要删除该音乐的缓存文件吗？'),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.pop(context, false),
+              child: const Text('取消'),
+            ),
+            TextButton(
+              onPressed: () => Navigator.pop(context, true),
+              child: const Text('删除'),
+            ),
+          ],
+        );
+      },
+    );
+
+    if (confirmed != true) {
+      return;
+    }
+
+    // 删除文件
+    await cacheFile.delete();
+
+    if (context.mounted) {
+      ScaffoldMessenger.of(
+        context,
+      ).showSnackBar(const SnackBar(content: Text('缓存已删除')));
+    }
+  } catch (e) {
+    if (context.mounted) {
+      ScaffoldMessenger.of(
+        context,
+      ).showSnackBar(SnackBar(content: Text('删除失败: $e')));
+    }
+  }
 }
