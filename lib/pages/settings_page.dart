@@ -2,7 +2,7 @@ import 'dart:io';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:path_provider/path_provider.dart';
-import 'package:cached_network_image/cached_network_image.dart';
+import '../providers/theme_provider.dart';
 
 class SettingsPage extends ConsumerStatefulWidget {
   const SettingsPage({super.key});
@@ -23,6 +23,9 @@ class _SettingsPageState extends ConsumerState<SettingsPage> {
 
   @override
   Widget build(BuildContext context) {
+    final themeConfig = ref.watch(themeConfigProvider);
+    final themeNotifier = ref.read(themeConfigProvider.notifier);
+
     return Scaffold(
       appBar: AppBar(
         title: const Text('设置'),
@@ -30,6 +33,60 @@ class _SettingsPageState extends ConsumerState<SettingsPage> {
       ),
       body: ListView(
         children: [
+          // 主题和外观设置
+          const Padding(
+            padding: EdgeInsets.all(16.0),
+            child: Text(
+              '主题和外观',
+              style: TextStyle(
+                fontSize: 18,
+                fontWeight: FontWeight.bold,
+                color: Colors.deepPurple,
+              ),
+            ),
+          ),
+          Card(
+            margin: const EdgeInsets.symmetric(horizontal: 16, vertical: 4),
+            child: ListTile(
+              leading: Container(
+                padding: const EdgeInsets.all(8),
+                decoration: BoxDecoration(
+                  color: Theme.of(context).primaryColor.withOpacity(0.1),
+                  borderRadius: BorderRadius.circular(8),
+                ),
+                child: Icon(
+                  themeConfig.themeMode == AppThemeMode.dark
+                      ? Icons.dark_mode
+                      : themeConfig.themeMode == AppThemeMode.light
+                      ? Icons.light_mode
+                      : Icons.brightness_auto,
+                  color: Theme.of(context).primaryColor,
+                ),
+              ),
+              title: const Text('夜间模式'),
+              subtitle: Text(getThemeModeName(themeConfig.themeMode)),
+              trailing: const Icon(Icons.chevron_right),
+              onTap: () => _showThemeModeDialog(context),
+            ),
+          ),
+          Card(
+            margin: const EdgeInsets.symmetric(horizontal: 16, vertical: 4),
+            child: ListTile(
+              leading: Container(
+                padding: const EdgeInsets.all(8),
+                decoration: BoxDecoration(
+                  color: themeNotifier.getSeedColor().withOpacity(0.1),
+                  borderRadius: BorderRadius.circular(8),
+                ),
+                child: Icon(Icons.palette, color: themeNotifier.getSeedColor()),
+              ),
+              title: const Text('主题颜色'),
+              subtitle: Text(getThemeColorName(themeConfig.themeColor)),
+              trailing: const Icon(Icons.chevron_right),
+              onTap: () => _showThemeColorDialog(context),
+            ),
+          ),
+          const SizedBox(height: 24),
           const Padding(
             padding: EdgeInsets.all(16.0),
             child: Text(
@@ -421,6 +478,152 @@ class _SettingsPageState extends ConsumerState<SettingsPage> {
       return '${(bytes / (1024 * 1024)).toStringAsFixed(2)} MB';
     } else {
       return '${(bytes / (1024 * 1024 * 1024)).toStringAsFixed(2)} GB';
+    }
+  }
+
+  /// 显示主题模式选择对话框
+  Future<void> _showThemeModeDialog(BuildContext context) async {
+    final currentMode = ref.read(themeConfigProvider).themeMode;
+
+    await showDialog(
+      context: context,
+      builder: (context) {
+        return AlertDialog(
+          title: const Text('选择夜间模式'),
+          content: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: AppThemeMode.values.map((mode) {
+              return RadioListTile<AppThemeMode>(
+                title: Text(getThemeModeName(mode)),
+                subtitle: Text(_getThemeModeDescription(mode)),
+                value: mode,
+                groupValue: currentMode,
+                onChanged: (value) {
+                  if (value != null) {
+                    ref.read(themeConfigProvider.notifier).setThemeMode(value);
+                    Navigator.pop(context);
+                  }
+                },
+              );
+            }).toList(),
+          ),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.pop(context),
+              child: const Text('取消'),
+            ),
+          ],
+        );
+      },
+    );
+  }
+
+  /// 显示主题颜色选择对话框
+  Future<void> _showThemeColorDialog(BuildContext context) async {
+    final currentColor = ref.read(themeConfigProvider).themeColor;
+
+    await showDialog(
+      context: context,
+      builder: (context) {
+        return AlertDialog(
+          title: const Text('选择主题颜色'),
+          content: Wrap(
+            alignment: WrapAlignment.center,
+            spacing: 16,
+            runSpacing: 16,
+            children: AppThemeColor.values.map((color) {
+              final colorValue = _getColorValue(color);
+              final isSelected = color == currentColor;
+
+              return InkWell(
+                onTap: () {
+                  ref.read(themeConfigProvider.notifier).setThemeColor(color);
+                  Navigator.pop(context);
+                },
+                borderRadius: BorderRadius.circular(12),
+                child: Container(
+                  width: 70,
+                  padding: const EdgeInsets.all(8),
+                  decoration: BoxDecoration(
+                    border: Border.all(
+                      color: isSelected
+                          ? colorValue
+                          : Colors.grey.withOpacity(0.3),
+                      width: isSelected ? 3 : 1,
+                    ),
+                    borderRadius: BorderRadius.circular(12),
+                  ),
+                  child: Column(
+                    children: [
+                      Container(
+                        width: 40,
+                        height: 40,
+                        decoration: BoxDecoration(
+                          color: colorValue,
+                          shape: BoxShape.circle,
+                        ),
+                        child: isSelected
+                            ? const Icon(
+                                Icons.check,
+                                color: Colors.white,
+                                size: 20,
+                              )
+                            : null,
+                      ),
+                      const SizedBox(height: 4),
+                      Text(
+                        getThemeColorName(color),
+                        style: TextStyle(
+                          fontSize: 11,
+                          color: isSelected ? colorValue : null,
+                          fontWeight: isSelected
+                              ? FontWeight.bold
+                              : FontWeight.normal,
+                        ),
+                        textAlign: TextAlign.center,
+                      ),
+                    ],
+                  ),
+                ),
+              );
+            }).toList(),
+          ),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.pop(context),
+              child: const Text('取消'),
+            ),
+          ],
+        );
+      },
+    );
+  }
+
+  String _getThemeModeDescription(AppThemeMode mode) {
+    switch (mode) {
+      case AppThemeMode.light:
+        return '始终使用浅色主题';
+      case AppThemeMode.dark:
+        return '始终使用深色主题';
+      case AppThemeMode.system:
+        return '跟随系统设置';
+    }
+  }
+
+  Color _getColorValue(AppThemeColor color) {
+    switch (color) {
+      case AppThemeColor.deepPurple:
+        return Colors.deepPurple;
+      case AppThemeColor.blue:
+        return Colors.blue;
+      case AppThemeColor.green:
+        return Colors.green;
+      case AppThemeColor.orange:
+        return Colors.orange;
+      case AppThemeColor.pink:
+        return Colors.pink;
+      case AppThemeColor.teal:
+        return Colors.teal;
     }
   }
 }

@@ -6,7 +6,6 @@ import '../models/music_list_item.dart';
 import '../providers/music_list_provider.dart';
 import '../providers/audio_player_provider.dart';
 import 'play_page.dart';
-import 'user_info_page.dart';
 import 'settings_page.dart';
 import 'package:cached_network_image/cached_network_image.dart';
 import './BuildDrawerHeader.dart';

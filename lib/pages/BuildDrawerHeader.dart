@@ -18,7 +18,6 @@ Widget BuildDrawerHeader(BuildContext context, WidgetRef ref) {
       color: Theme.of(context).colorScheme.primaryContainer,
     ),
     currentAccountPicture: CircleAvatar(
-      backgroundColor: Colors.white,
       child: userInfo.avatarUrl.isEmpty
           ? Icon(
               Icons.person,
