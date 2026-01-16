@@ -13,6 +13,7 @@ Widget BuildDrawerHeader(BuildContext context, WidgetRef ref) {
   };
 
   return UserAccountsDrawerHeader(
+    margin: EdgeInsets.all(0),
     decoration: BoxDecoration(
       color: Theme.of(context).colorScheme.primaryContainer,
     ),

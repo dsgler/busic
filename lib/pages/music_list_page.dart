@@ -193,21 +193,26 @@ class _MusicListPageState extends ConsumerState<MusicListPage> {
           padding: EdgeInsets.zero,
           children: [
             BuildDrawerHeader(context, ref),
-            ListTile(
-              leading: const Icon(Icons.person),
-              title: const Text('用户信息'),
-              onTap: () {
-                Navigator.pop(context);
-                Navigator.push(
-                  context,
-                  MaterialPageRoute(builder: (context) => const UserInfoPage()),
-                );
-              },
+            // ListTile(
+            //   leading: const Icon(Icons.person),
+            //   title: const Text('用户信息'),
+            //   onTap: () {
+            //     Navigator.pop(context);
+            //     Navigator.push(
+            //       context,
+            //       MaterialPageRoute(builder: (context) => const UserInfoPage()),
+            //     );
+            //   },
+            // ),
+            Divider(
+              color: Theme.of(context).colorScheme.outlineVariant,
+              height: 0.0,
             ),
-            const Divider(),
             ListTile(
               leading: const Icon(Icons.music_note),
               title: const Text('默认列表'),
+              selected: mode == MusicListMode.defaultMode,
+              selectedTileColor: Theme.of(context).colorScheme.primaryContainer,
               onTap: () {
                 ref
                     .read(UserPrefProvider.notifier)
@@ -215,10 +220,15 @@ class _MusicListPageState extends ConsumerState<MusicListPage> {
                 Navigator.pop(context);
               },
             ),
-            const Divider(),
+            Divider(
+              color: Theme.of(context).colorScheme.outlineVariant,
+              height: 0.0,
+            ),
             ListTile(
-              leading: const Icon(Icons.music_note),
+              leading: const Icon(Icons.star),
               title: const Text('收藏夹'),
+              selected: mode == MusicListMode.favList,
+              selectedTileColor: Theme.of(context).colorScheme.primaryContainer,
               onTap: () {
                 ref
                     .read(UserPrefProvider.notifier)
@@ -226,10 +236,15 @@ class _MusicListPageState extends ConsumerState<MusicListPage> {
                 Navigator.pop(context);
               },
             ),
-            const Divider(),
+            Divider(
+              color: Theme.of(context).colorScheme.outlineVariant,
+              height: 0.0,
+            ),
             ListTile(
-              leading: const Icon(Icons.music_note),
+              leading: const Icon(Icons.collections_bookmark),
               title: const Text('合辑'),
+              selected: mode == MusicListMode.seasonsArchives,
+              selectedTileColor: Theme.of(context).colorScheme.primaryContainer,
               onTap: () {
                 ref
                     .read(UserPrefProvider.notifier)
@@ -237,7 +252,10 @@ class _MusicListPageState extends ConsumerState<MusicListPage> {
                 Navigator.pop(context);
               },
             ),
-            const Divider(),
+            Divider(
+              color: Theme.of(context).colorScheme.outlineVariant,
+              height: 0.0,
+            ),
             ListTile(
               leading: const Icon(Icons.settings),
               title: const Text('设置'),
