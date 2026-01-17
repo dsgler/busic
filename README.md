@@ -1,16 +1,28 @@
 # busic
 
-A new Flutter project.
+一个 B站 音乐播放器
 
-## Getting Started
+[说明]
 
-This project is a starting point for a Flutter application.
+- 登录
+  用手机版B站扫码确认登录后回到应用点击 `确认已登录`。
+  `获取登录状态` 用于检查登录是否过期。
+  不登陆也可以使用，不过可能无法访问某些视频。
 
-A few resources to get you started if this is your first Flutter project:
+- 收藏夹
+  在网页打开收藏夹，链接类似
 
-- [Lab: Write your first Flutter app](https://docs.flutter.dev/get-started/codelab)
-- [Cookbook: Useful Flutter samples](https://docs.flutter.dev/cookbook)
+```
+https://space.bilibili.com/用户mid/favlist?fid=收藏夹ID&ftype=create&spm_id_from=333.1007.0.0
+```
 
-For help getting started with Flutter development, view the
-[online documentation](https://docs.flutter.dev/), which offers tutorials,
-samples, guidance on mobile development, and a full API reference.
+请填入收藏夹ID
+
+- 视频合辑
+  网页打开合辑
+
+```
+https://space.bilibili.com/用户mid/lists/合辑ID?type=season
+```
+
+目前合辑和收藏夹只能同步，不能单独添加和删除，请在B站上编辑
