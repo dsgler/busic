@@ -182,7 +182,28 @@ class _MusicListPageState extends ConsumerState<MusicListPage> {
           IconButton(
             icon: const Icon(Icons.delete),
             onPressed: () {
-              ref.read(musicListProvider.notifier).clearList(category: mode);
+              showDialog(
+                context: context,
+                builder: (ctx) => AlertDialog(
+                  title: const Text('确认要删除吗？'),
+                  content: const Text('这将删除列表中所有音乐（不会删除对应缓存）'),
+                  actions: [
+                    TextButton(
+                      onPressed: () => Navigator.pop(context),
+                      child: const Text('取消'),
+                    ),
+                    TextButton(
+                      onPressed: () async {
+                        ref
+                            .read(musicListProvider.notifier)
+                            .clearList(category: mode);
+                        Navigator.pop(context);
+                      },
+                      child: Text('确定'),
+                    ),
+                  ],
+                ),
+              );
             },
           ),
         ],
@@ -192,17 +213,6 @@ class _MusicListPageState extends ConsumerState<MusicListPage> {
           padding: EdgeInsets.zero,
           children: [
             BuildDrawerHeader(context, ref),
-            // ListTile(
-            //   leading: const Icon(Icons.person),
-            //   title: const Text('用户信息'),
-            //   onTap: () {
-            //     Navigator.pop(context);
-            //     Navigator.push(
-            //       context,
-            //       MaterialPageRoute(builder: (context) => const UserInfoPage()),
-            //     );
-            //   },
-            // ),
             Divider(
               color: Theme.of(context).colorScheme.outlineVariant,
               height: 0.0,
@@ -422,6 +432,7 @@ class _MusicListPageState extends ConsumerState<MusicListPage> {
                           isSinglePage,
                           playingState,
                           originalIndex,
+                          mode,
                         );
                       },
                     ),
@@ -450,6 +461,7 @@ class _MusicListPageState extends ConsumerState<MusicListPage> {
     bool isSinglePage,
     AsyncValue<bool> playingState,
     int originalIndex,
+    MusicListMode mode,
   ) {
     return ListTile(
       tileColor: isCurrentPlaying
@@ -516,7 +528,7 @@ class _MusicListPageState extends ConsumerState<MusicListPage> {
         ref.read(currentPlayingIndexProvider.notifier).setIndex(originalIndex);
       },
       onLongPress: () async {
-        await _showMusicMenu(context, music);
+        await _showMusicMenu(context, ref, music, mode);
       },
     );
   }
@@ -686,31 +698,51 @@ class _MusicControlBar extends ConsumerWidget {
 }
 
 /// 显示音乐菜单
-Future<void> _showMusicMenu(BuildContext context, MusicListItemBv music) async {
+Future<void> _showMusicMenu(
+  BuildContext context,
+  WidgetRef ref,
+  MusicListItemBv music,
+  MusicListMode mode,
+) async {
   await showModalBottomSheet(
     context: context,
     builder: (context) {
       return SafeArea(
-        child: Column(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            ListTile(
-              leading: const Icon(Icons.save_alt),
-              title: const Text('将缓存保存到本地'),
-              onTap: () async {
-                Navigator.pop(context);
-                await _saveCacheToLocal(context, music);
-              },
-            ),
-            ListTile(
-              leading: const Icon(Icons.delete),
-              title: const Text('删除缓存'),
-              onTap: () async {
-                Navigator.pop(context);
-                await _deleteCache(context, music);
-              },
-            ),
-          ],
+        child: Padding(
+          padding: const EdgeInsets.only(top: 8.0),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              if (mode == MusicListMode.defaultMode)
+                ListTile(
+                  leading: const Icon(Icons.delete),
+                  title: const Text('从列表中删除'),
+                  onTap: () async {
+                    Navigator.pop(context);
+
+                    ref
+                        .read(musicListProvider.notifier)
+                        .removeMusicByBvCid(music.bvid, music.cid);
+                  },
+                ),
+              ListTile(
+                leading: const Icon(Icons.save_alt),
+                title: const Text('将缓存保存到本地'),
+                onTap: () async {
+                  Navigator.pop(context);
+                  await _saveCacheToLocal(context, music);
+                },
+              ),
+              ListTile(
+                leading: const Icon(Icons.delete_forever),
+                title: const Text('删除缓存'),
+                onTap: () async {
+                  Navigator.pop(context);
+                  await _deleteCache(context, music);
+                },
+              ),
+            ],
+          ),
         ),
       );
     },

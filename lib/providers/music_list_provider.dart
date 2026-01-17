@@ -75,6 +75,8 @@ class MusicListNotifier extends AsyncNotifier<List<MusicListItemBv>> {
 
   // 删除音乐（根据索引）
   Future<void> removeMusic(int index) async {
+    final userPrefAsync = ref.watch(UserPrefProvider);
+    final category = userPrefAsync.requireValue.musicListMode;
     final currentList = state.value!;
     if (index < 0 || index >= currentList.length) return;
 
@@ -84,7 +86,22 @@ class MusicListNotifier extends AsyncNotifier<List<MusicListItemBv>> {
       ...currentList.sublist(0, index),
       ...currentList.sublist(index + 1),
     ];
-    await db.saveMusicList(newList);
+    await db.saveMusicList(newList, category: category);
+    state = AsyncValue.data(newList);
+  }
+
+  // 删除音乐（根据索引）
+  Future<void> removeMusicByBvCid(String bvid, int cid) async {
+    final userPrefAsync = ref.watch(UserPrefProvider);
+    final category = userPrefAsync.requireValue.musicListMode;
+    final currentList = state.value!;
+
+    final db = ref.read(musicDatabaseProvider);
+    // 重新保存整个列表（简单方式）
+    final newList = currentList
+        .where((e) => e.bvid != bvid || e.cid != cid)
+        .toList();
+    await db.saveMusicList(newList, category: category);
     state = AsyncValue.data(newList);
   }
 
@@ -101,9 +118,12 @@ class MusicListNotifier extends AsyncNotifier<List<MusicListItemBv>> {
   }
 
   // 设置整个列表
-  Future<void> setList(List<MusicListItemBv> list) async {
+  Future<void> setList(
+    List<MusicListItemBv> list, {
+    MusicListMode? category,
+  }) async {
     final db = ref.read(musicDatabaseProvider);
-    await db.saveMusicList(list);
+    await db.saveMusicList(list, category: category);
     state = AsyncValue.data(list);
   }
 
@@ -128,6 +148,29 @@ final musicListProvider =
       MusicListNotifier.new,
     );
 
+// 播放列表快照 Notifier（用于保存点击播放时的列表副本）
+class PlayingListSnapshotNotifier extends Notifier<List<MusicListItemBv>> {
+  @override
+  List<MusicListItemBv> build() {
+    return [];
+  }
+
+  void setSnapshot(List<MusicListItemBv> list) {
+    // 创建列表的深拷贝
+    state = List.from(list);
+  }
+
+  void clear() {
+    state = [];
+  }
+}
+
+// 播放列表快照 Provider
+final playingListSnapshotProvider =
+    NotifierProvider<PlayingListSnapshotNotifier, List<MusicListItemBv>>(
+      PlayingListSnapshotNotifier.new,
+    );
+
 class CurrentPlayingIndexNotifier extends Notifier<int?> {
   @override
   int? build() {
@@ -145,6 +188,9 @@ class CurrentPlayingIndexNotifier extends Notifier<int?> {
 
     final musicListAsync = ref.read(musicListProvider);
     musicListAsync.whenData((musicList) async {
+      // 保存当前列表的快照
+      ref.read(playingListSnapshotProvider.notifier).setSnapshot(musicList);
+
       ref
           .read(audioPlayerManagerProvider.notifier)
           .setPlayer(await musicList[i!].generatePlayer());
@@ -153,16 +199,16 @@ class CurrentPlayingIndexNotifier extends Notifier<int?> {
 
   // 播放下一首
   void playNext() {
-    final musicListAsync = ref.read(musicListProvider);
+    // 使用播放列表快照而不是实时列表
+    final playingList = ref.read(playingListSnapshotProvider);
     final currentIndex = state;
     final playMode = ref.read(playModeNotifierProvider);
 
-    if (!musicListAsync.hasValue || musicListAsync.value!.isEmpty) {
+    if (playingList.isEmpty) {
       return;
     }
 
-    final musicList = musicListAsync.value!;
-    final listLength = musicList.length;
+    final listLength = playingList.length;
 
     int? nextIndex;
 
@@ -187,16 +233,16 @@ class CurrentPlayingIndexNotifier extends Notifier<int?> {
 
   // 播放上一首
   void playPrevious() {
-    final musicListAsync = ref.read(musicListProvider);
+    // 使用播放列表快照而不是实时列表
+    final playingList = ref.read(playingListSnapshotProvider);
     final currentIndex = state;
     final playMode = ref.read(playModeNotifierProvider);
 
-    if (!musicListAsync.hasValue || musicListAsync.value!.isEmpty) {
+    if (playingList.isEmpty) {
       return;
     }
 
-    final musicList = musicListAsync.value!;
-    final listLength = musicList.length;
+    final listLength = playingList.length;
 
     int? prevIndex;
 

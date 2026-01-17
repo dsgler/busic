@@ -56,10 +56,12 @@ class MusicDatabase extends _$MusicDatabase {
   }
 
   /// 保存音乐列表（替换所有数据）
-  Future<void> saveMusicList(List<MusicListItemBv> musicList) async {
+  Future<void> saveMusicList(
+    List<MusicListItemBv> musicList, {
+    MusicListMode? category,
+  }) async {
     await transaction(() async {
-      // 删除旧数据
-      await delete(musicItems).go();
+      await deleteMusicList(category: category);
 
       // 插入新数据
       await batch((batch) {
@@ -72,8 +74,14 @@ class MusicDatabase extends _$MusicDatabase {
   }
 
   /// 删除所有音乐项
-  Future<void> deleteMusicList() async {
-    await delete(musicItems).go();
+  Future<void> deleteMusicList({MusicListMode? category}) async {
+    if (category != null) {
+      await (delete(
+        musicItems,
+      )..where((it) => it.category.equals(category.jsonValue))).go();
+    } else {
+      await delete(musicItems).go();
+    }
   }
 
   /// 清空所有数据
