@@ -46,6 +46,6 @@ app.*.map.json
 ios
 linux
 macos
-windows
+# windows
 web
 .vscode
