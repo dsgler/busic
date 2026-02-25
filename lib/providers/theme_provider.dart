@@ -30,19 +30,11 @@ class ThemeConfigNotifier extends Notifier<ThemeConfig> {
 
   @override
   ThemeConfig build() {
-    _loadThemeConfig();
-    return const ThemeConfig(
-      themeMode: AppThemeMode.system,
-      themeColor: AppThemeColor.deepPurple,
-    );
-  }
-
-  Future<void> _loadThemeConfig() async {
     final prefs = ref.read(sharedPreferencesProvider);
     final themeModeIndex = prefs.getInt(_themeModeKey) ?? 2; // 默认跟随系统
     final themeColorIndex = prefs.getInt(_themeColorKey) ?? 0; // 默认深紫色
 
-    state = ThemeConfig(
+    return ThemeConfig(
       themeMode: AppThemeMode.values[themeModeIndex],
       themeColor: AppThemeColor.values[themeColorIndex],
     );
