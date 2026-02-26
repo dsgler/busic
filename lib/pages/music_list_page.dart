@@ -815,25 +815,27 @@ Future<void> _deleteCache(BuildContext context, MusicListItemBv music) async {
     }
 
     // 确认删除
-    final confirmed = await showDialog<bool>(
-      context: context,
-      builder: (context) {
-        return AlertDialog(
-          title: const Text('确认删除'),
-          content: const Text('确定要删除该音乐的缓存文件吗？'),
-          actions: [
-            TextButton(
-              onPressed: () => Navigator.pop(context, false),
-              child: const Text('取消'),
-            ),
-            TextButton(
-              onPressed: () => Navigator.pop(context, true),
-              child: const Text('删除'),
-            ),
-          ],
-        );
-      },
-    );
+    final confirmed = context.mounted
+        ? await showDialog<bool>(
+            context: context,
+            builder: (context) {
+              return AlertDialog(
+                title: const Text('确认删除'),
+                content: const Text('确定要删除该音乐的缓存文件吗？'),
+                actions: [
+                  TextButton(
+                    onPressed: () => Navigator.pop(context, false),
+                    child: const Text('取消'),
+                  ),
+                  TextButton(
+                    onPressed: () => Navigator.pop(context, true),
+                    child: const Text('删除'),
+                  ),
+                ],
+              );
+            },
+          )
+        : false;
 
     if (confirmed != true) {
       return;

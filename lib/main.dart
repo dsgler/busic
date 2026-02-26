@@ -157,6 +157,8 @@ class _MyAppState extends ConsumerState<MyApp>
           brightness: Brightness.dark,
         ),
         useMaterial3: true,
+        // fontFamily: '微软雅黑',
+        fontFamily: 'Noto Serif SC',
       ),
       themeMode: themeNotifier.getThemeMode(),
       home: const MusicListPage(),

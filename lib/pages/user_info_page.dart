@@ -238,7 +238,6 @@ class UserInfoPage extends ConsumerWidget {
 
     if (!context.mounted) return;
 
-    // TODO: 实现获取登录二维码的逻辑
     showDialog(
       context: context,
       builder: (context) => AlertDialog(
