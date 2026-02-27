@@ -21,12 +21,14 @@ class MusicListPage extends ConsumerStatefulWidget {
 
 class _MusicListPageState extends ConsumerState<MusicListPage> {
   final TextEditingController _searchController = TextEditingController();
+  final ScrollController _listScrollController = ScrollController();
   String _searchKeyword = '';
   bool _showSearch = false;
 
   @override
   void dispose() {
     _searchController.dispose();
+    _listScrollController.dispose();
     super.dispose();
   }
 
@@ -409,7 +411,9 @@ class _MusicListPageState extends ConsumerState<MusicListPage> {
                   child: Scrollbar(
                     interactive: true,
                     thickness: 6,
+                    controller: _listScrollController,
                     child: ListView.builder(
+                      controller: _listScrollController,
                       itemCount: musicList.length,
                       itemBuilder: (context, index) {
                         final music = musicList[index];
