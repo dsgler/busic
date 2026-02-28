@@ -429,15 +429,10 @@ class MusicList extends ConsumerWidget {
                       itemCount: curMusicList.length,
                       itemBuilder: (context, index) {
                         final music = curMusicList[index];
-                        final originalIndex =
-                            musicListAsync.value?.indexWhere(
-                              (m) => m.bvid == music.bvid && m.cid == music.cid,
-                            ) ??
-                            -1;
 
                         return MusicTile(
                           music: music,
-                          originalIndex: originalIndex,
+                          originalIndex: index,
                           curList: curMusicList,
                         );
                       },
@@ -473,9 +468,6 @@ class MusicTile extends ConsumerWidget {
     required this.originalIndex,
     required this.curList,
   });
-
-  bool get isSinglePage =>
-      music.subTitle == "" || music.title == music.subTitle;
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
@@ -513,7 +505,7 @@ class MusicTile extends ConsumerWidget {
             : Icon(Icons.music_note, color: Colors.grey[600]),
       ),
       title: Text(
-        isSinglePage ? music.title : music.subTitle,
+        music.displayTitle,
         style: TextStyle(
           color: isCurrentPlaying
               ? Theme.of(context).colorScheme.primary
@@ -522,10 +514,7 @@ class MusicTile extends ConsumerWidget {
         ),
         maxLines: 2,
       ),
-      subtitle: Text(
-        isSinglePage ? music.artist : '${music.artist} - ${music.title}',
-        maxLines: 2,
-      ),
+      subtitle: Text(music.displaySubTitle, maxLines: 2),
       trailing: isCurrentPlaying
           ? playingState.when(
               data: (isPlaying) => Icon(
@@ -652,7 +641,7 @@ class _MusicControlBar extends ConsumerWidget {
                       mainAxisSize: MainAxisSize.min,
                       children: [
                         Text(
-                          music.title,
+                          music.displayTitle,
                           style: const TextStyle(
                             fontWeight: FontWeight.bold,
                             fontSize: 14,
@@ -662,7 +651,7 @@ class _MusicControlBar extends ConsumerWidget {
                         ),
                         const SizedBox(height: 2),
                         Text(
-                          music.artist,
+                          music.displaySubTitle,
                           style: TextStyle(
                             fontSize: 12,
                             color: Colors.grey[600],

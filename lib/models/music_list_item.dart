@@ -93,6 +93,11 @@ class MusicListItemBv {
       '_'
       '$cid';
 
+  bool get isSinglePage => subTitle == "" || title == subTitle;
+
+  String get displayTitle => isSinglePage ? title : subTitle;
+  String get displaySubTitle => isSinglePage ? artist : '$artist - $title';
+
   Future<AudioPlayer> generatePlayer() async {
     final player = AudioPlayer();
     final cacheFile = await getCacheFile();

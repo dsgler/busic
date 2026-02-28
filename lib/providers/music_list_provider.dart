@@ -177,11 +177,6 @@ class PlayingListSnapshotNotifier extends AsyncNotifier<PlayingList> {
     return state.value ?? PlayingList(curIndex: null, curList: []);
   }
 
-  void setSnapshot(List<MusicListItemBv> list) {
-    // 创建列表的深拷贝
-    state = AsyncData(state.requireValue.copyWith(curList: List.from(list)));
-  }
-
   void clear() {
     state = AsyncData(PlayingList(curIndex: null, curList: []));
   }
@@ -193,18 +188,21 @@ class PlayingListSnapshotNotifier extends AsyncNotifier<PlayingList> {
       return;
     }
 
-    state = AsyncData(state.requireValue.copyWith(curIndex: i));
+    if (musicListSnap == null) {
+      state = AsyncData(state.requireValue.copyWith(curIndex: i));
+    } else {
+      state = AsyncData(PlayingList(curIndex: i, curList: musicListSnap));
+    }
+
     ref.read(audioPlayerManagerProvider.notifier).setPlayer(null);
 
-    if (musicListSnap != null) {
-      // 保存当前列表的快照
-      setSnapshot(musicListSnap);
-    }
     final list = state.requireValue.curList;
 
-    ref
-        .read(audioPlayerManagerProvider.notifier)
-        .setPlayer(await list[i!].generatePlayer());
+    if (i != null) {
+      ref
+          .read(audioPlayerManagerProvider.notifier)
+          .setPlayer(await list[i].generatePlayer());
+    }
   }
 
   String? getCurId() {

@@ -15,21 +15,25 @@ class PlayPage extends ConsumerWidget {
     final bufferedPosition = ref.watch(bufferedPositionProvider);
     final duration = ref.watch(durationProvider);
 
-    final musicListAsync = ref.watch(musicListProvider);
-    final currentPlayingIndex = ref
-        .watch(playingListSnapshotProvider)
-        .value
-        ?.curIndex;
+    ref.watch(playingListSnapshotProvider);
+    final music = ref.watch(playingListSnapshotProvider.notifier).getCurMusic();
+    final isLoaded = music != null;
+
+    // final musicListAsync = ref.watch(musicListProvider);
+    // final currentPlayingIndex = ref
+    //     .watch(playingListSnapshotProvider)
+    //     .value
+    //     ?.curIndex;
     final playMode = ref.watch(playModeNotifierProvider);
 
-    final musicList = musicListAsync.hasValue
-        ? musicListAsync.requireValue
-        : null;
-    final isLoaded = currentPlayingIndex != null && musicList != null;
-    final music = isLoaded ? musicList[currentPlayingIndex] : null;
-    final isSinglePage =
-        music != null &&
-        (music.subTitle == "" || music.title == music.subTitle);
+    // final musicList = musicListAsync.hasValue
+    //     ? musicListAsync.requireValue
+    //     : null;
+    // final isLoaded = currentPlayingIndex != null && musicList != null;
+    // final music = isLoaded ? musicList[currentPlayingIndex] : null;
+    // final isSinglePage =
+    //     music != null &&
+    //     (music.subTitle == "" || music.title == music.subTitle);
 
     return Scaffold(
       appBar: AppBar(
@@ -61,7 +65,7 @@ class PlayPage extends ConsumerWidget {
                 ),
                 child: ClipRRect(
                   borderRadius: BorderRadius.circular(20),
-                  child: isLoaded && music!.coverUrl != null
+                  child: isLoaded && music.coverUrl != null
                       ? ClipRRect(
                           borderRadius: BorderRadius.circular(8),
                           child: CachedNetworkImage(
@@ -94,7 +98,7 @@ class PlayPage extends ConsumerWidget {
             child: Column(
               children: [
                 Text(
-                  (isSinglePage ? music.title : music?.subTitle) ?? "歌曲标题",
+                  (music?.displayTitle) ?? "歌曲标题",
                   style: Theme.of(context).textTheme.headlineSmall?.copyWith(
                     fontWeight: FontWeight.bold,
                   ),
@@ -103,11 +107,7 @@ class PlayPage extends ConsumerWidget {
                 ),
                 const SizedBox(height: 8),
                 Text(
-                  music != null
-                      ? (isSinglePage
-                            ? music.artist
-                            : '${music.artist} - ${music.title}')
-                      : '艺术家',
+                  music?.displaySubTitle ?? '艺术家',
                   style: Theme.of(
                     context,
                   ).textTheme.bodyLarge?.copyWith(color: Colors.grey[600]),

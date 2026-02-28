@@ -22,7 +22,9 @@ class UserPrefNotifier extends AsyncNotifier<UserPref> {
   }
 
   void setMusicListMode(MusicListMode m) {
-    ref.read(playingListSnapshotProvider.notifier).setIndex(null);
+    ref
+        .read(playingListSnapshotProvider.notifier)
+        .setIndex(null, musicListSnap: []);
     state = AsyncData(state.requireValue.copyWith(musicListMode: m));
   }
 
