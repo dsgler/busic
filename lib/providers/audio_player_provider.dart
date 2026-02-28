@@ -1,6 +1,5 @@
 import 'package:busic/consts/network.dart';
 import 'package:busic/providers/music_list_provider.dart';
-import 'package:busic/providers/pref_provider.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:just_audio/just_audio.dart';
 
@@ -8,16 +7,6 @@ import 'package:just_audio/just_audio.dart';
 class AudioPlayerManager extends Notifier<AudioPlayer?> {
   @override
   AudioPlayer? build() {
-    ref.listen(UserPrefProvider.select((s) => s.value?.musicListMode), (
-      prev,
-      next,
-    ) {
-      if (prev != next) {
-        dispose();
-        ref.read(currentPlayingIndexProvider.notifier).setIndex(null);
-      }
-    });
-
     return null;
   }
 
@@ -45,7 +34,7 @@ class AudioPlayerManager extends Notifier<AudioPlayer?> {
     newPlayer?.play();
     newPlayer?.playerStateStream.listen((e) {
       if (e.processingState == ProcessingState.completed) {
-        ref.read(currentPlayingIndexProvider.notifier).playNext();
+        ref.read(playingListSnapshotProvider.notifier).playNext();
       }
     });
   }

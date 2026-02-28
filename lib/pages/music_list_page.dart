@@ -35,8 +35,7 @@ class _MusicListPageState extends ConsumerState<MusicListPage> {
   @override
   Widget build(BuildContext context) {
     final musicListAsync = ref.watch(musicListProvider);
-    final currentPlayingIndex = ref.watch(currentPlayingIndexProvider);
-    // final playingState = ref.watch(playingStateProvider);
+    // final currentPlayingIndex = ref.watch(currentPlayingIndexProvider).value;
     final modeAsync = ref.watch(UserPrefProvider);
     final mode = modeAsync.hasValue
         ? modeAsync.requireValue.musicListMode
@@ -320,79 +319,92 @@ class _MusicListPageState extends ConsumerState<MusicListPage> {
               ),
             ),
           // 音乐列表
-          Expanded(child: _buildMusicList(musicListAsync, mode)),
+          Expanded(
+            child: MusicList(
+              searchKeyword: _searchKeyword,
+              scrollController: _listScrollController,
+            ),
+          ),
 
           // 底部音乐控制栏
-          if (currentPlayingIndex != null)
-            musicListAsync.when(
-              data: (musicList) {
-                if (musicList.isEmpty ||
-                    currentPlayingIndex >= musicList.length) {
-                  return const SizedBox.shrink();
-                }
-                return _MusicControlBar(
-                  music: musicList[currentPlayingIndex],
-                  onTap: () {
-                    Navigator.push(
-                      context,
-                      PageRouteBuilder(
-                        pageBuilder: (context, animation, secondaryAnimation) =>
-                            const PlayPage(),
-                        transitionsBuilder:
-                            (context, animation, secondaryAnimation, child) {
-                              const begin = Offset(0.0, 1.0);
-                              const end = Offset.zero;
-                              const curve = Curves.easeInOut;
-                              var tween = Tween(
-                                begin: begin,
-                                end: end,
-                              ).chain(CurveTween(curve: curve));
-                              return SlideTransition(
-                                position: animation.drive(tween),
-                                child: child,
-                              );
-                            },
-                      ),
-                    );
-                  },
-                );
-              },
-              loading: () => const SizedBox.shrink(),
-              error: (_, _) => const SizedBox.shrink(),
-            ),
+          musicListAsync.when(
+            data: (musicList) {
+              return _MusicControlBar(
+                onTap: () {
+                  Navigator.push(
+                    context,
+                    PageRouteBuilder(
+                      pageBuilder: (context, animation, secondaryAnimation) =>
+                          const PlayPage(),
+                      transitionsBuilder:
+                          (context, animation, secondaryAnimation, child) {
+                            const begin = Offset(0.0, 1.0);
+                            const end = Offset.zero;
+                            const curve = Curves.easeInOut;
+                            var tween = Tween(
+                              begin: begin,
+                              end: end,
+                            ).chain(CurveTween(curve: curve));
+                            return SlideTransition(
+                              position: animation.drive(tween),
+                              child: child,
+                            );
+                          },
+                    ),
+                  );
+                },
+              );
+            },
+            loading: () => const SizedBox.shrink(),
+            error: (_, _) => const SizedBox.shrink(),
+          ),
         ],
       ),
     );
   }
+}
 
-  Widget _buildMusicList(
-    AsyncValue<List<MusicListItemBv>> musicListAsync,
-    MusicListMode mode,
-  ) {
+// 音乐列表 Widget
+class MusicList extends ConsumerWidget {
+  final String searchKeyword;
+  final ScrollController scrollController;
+
+  const MusicList({
+    super.key,
+    required this.searchKeyword,
+    required this.scrollController,
+  });
+
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    final musicListAsync = ref.watch(musicListProvider);
+    final modeAsync = ref.watch(UserPrefProvider);
+    final mode = modeAsync.hasValue
+        ? modeAsync.requireValue.musicListMode
+        : MusicListMode.defaultMode;
+
     return FutureBuilder<List<MusicListItemBv>>(
-      future: _searchKeyword.isEmpty
+      future: searchKeyword.isEmpty
           ? Future.value(musicListAsync.value ?? [])
           : ref
                 .read(musicDatabaseProvider)
-                .searchMusicList(_searchKeyword, category: mode),
+                .searchMusicList(searchKeyword, category: mode),
       builder: (context, snapshot) {
-        if (_searchKeyword.isNotEmpty &&
+        if (searchKeyword.isNotEmpty &&
             snapshot.connectionState == ConnectionState.waiting) {
           return const Center(child: CircularProgressIndicator());
         }
 
-        final musicList = snapshot.data ?? musicListAsync.value ?? [];
-        final currentPlayingIndex = ref.watch(currentPlayingIndexProvider);
-        final playingState = ref.watch(playingStateProvider);
+        final curMusicList = snapshot.data ?? musicListAsync.value ?? [];
 
         return musicListAsync.when(
-          data: (_) => musicList.isEmpty
+          data: (_) => curMusicList.isEmpty
               ? Center(
                   child: Column(
                     mainAxisAlignment: MainAxisAlignment.center,
                     children: [
                       Icon(
-                        _searchKeyword.isEmpty
+                        searchKeyword.isEmpty
                             ? Icons.music_note_outlined
                             : Icons.search_off,
                         size: 80,
@@ -400,7 +412,7 @@ class _MusicListPageState extends ConsumerState<MusicListPage> {
                       ),
                       const SizedBox(height: 16),
                       Text(
-                        _searchKeyword.isEmpty ? '暂无音乐' : '未找到匹配的音乐',
+                        searchKeyword.isEmpty ? '暂无音乐' : '未找到匹配的音乐',
                         style: TextStyle(fontSize: 18, color: Colors.grey[600]),
                       ),
                     ],
@@ -411,32 +423,22 @@ class _MusicListPageState extends ConsumerState<MusicListPage> {
                   child: Scrollbar(
                     interactive: true,
                     thickness: 6,
-                    controller: _listScrollController,
+                    controller: scrollController,
                     child: ListView.builder(
-                      controller: _listScrollController,
-                      itemCount: musicList.length,
+                      controller: scrollController,
+                      itemCount: curMusicList.length,
                       itemBuilder: (context, index) {
-                        final music = musicList[index];
+                        final music = curMusicList[index];
                         final originalIndex =
                             musicListAsync.value?.indexWhere(
                               (m) => m.bvid == music.bvid && m.cid == music.cid,
                             ) ??
                             -1;
-                        final isCurrentPlaying =
-                            originalIndex != -1 &&
-                            currentPlayingIndex == originalIndex;
-                        final isSinglePage =
-                            music.subTitle == "" ||
-                            music.title == music.subTitle;
 
-                        return _buildMusicTile(
-                          context,
-                          music,
-                          isCurrentPlaying,
-                          isSinglePage,
-                          playingState,
-                          originalIndex,
-                          mode,
+                        return MusicTile(
+                          music: music,
+                          originalIndex: originalIndex,
+                          curList: curMusicList,
                         );
                       },
                     ),
@@ -457,16 +459,35 @@ class _MusicListPageState extends ConsumerState<MusicListPage> {
       },
     );
   }
+}
 
-  Widget _buildMusicTile(
-    BuildContext context,
-    MusicListItemBv music,
-    bool isCurrentPlaying,
-    bool isSinglePage,
-    AsyncValue<bool> playingState,
-    int originalIndex,
-    MusicListMode mode,
-  ) {
+// 音乐列表项 Widget
+class MusicTile extends ConsumerWidget {
+  final MusicListItemBv music;
+  final int originalIndex;
+  final List<MusicListItemBv> curList;
+
+  const MusicTile({
+    super.key,
+    required this.music,
+    required this.originalIndex,
+    required this.curList,
+  });
+
+  bool get isSinglePage =>
+      music.subTitle == "" || music.title == music.subTitle;
+
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    ref.watch(playingListSnapshotProvider);
+    final isCurrentPlaying =
+        ref.watch(playingListSnapshotProvider.notifier).getCurId() == music.id;
+    final playingState = ref.watch(playingStateProvider);
+    final modeAsync = ref.watch(UserPrefProvider);
+    final mode = modeAsync.hasValue
+        ? modeAsync.requireValue.musicListMode
+        : MusicListMode.defaultMode;
+
     return ListTile(
       tileColor: isCurrentPlaying
           ? Theme.of(context).colorScheme.surfaceContainerHighest
@@ -520,16 +541,14 @@ class _MusicListPageState extends ConsumerState<MusicListPage> {
             )
           : null,
       onTap: () async {
-        if (originalIndex == -1) return;
-
-        // 如果点击的是当前正在播放的歌曲，只切换播放/暂停状态
-        final currentPlayingIndex = ref.read(currentPlayingIndexProvider);
-        if (currentPlayingIndex == originalIndex) {
+        if (isCurrentPlaying) {
           return;
         }
 
         // 设置当前播放的音乐索引
-        ref.read(currentPlayingIndexProvider.notifier).setIndex(originalIndex);
+        ref
+            .read(playingListSnapshotProvider.notifier)
+            .setIndex(originalIndex, musicListSnap: curList);
       },
       onLongPress: () async {
         await _showMusicMenu(context, ref, music, mode);
@@ -540,10 +559,9 @@ class _MusicListPageState extends ConsumerState<MusicListPage> {
 
 // 底部音乐控制栏
 class _MusicControlBar extends ConsumerWidget {
-  final MusicListItemBv music;
   final VoidCallback onTap;
 
-  const _MusicControlBar({required this.music, required this.onTap});
+  const _MusicControlBar({required this.onTap});
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
@@ -551,6 +569,11 @@ class _MusicControlBar extends ConsumerWidget {
     final playingState = ref.watch(playingStateProvider);
     final position = ref.watch(positionProvider);
     final duration = ref.watch(durationProvider);
+    ref.watch(playingListSnapshotProvider);
+    final music = ref.watch(playingListSnapshotProvider.notifier).getCurMusic();
+    if (music == null) {
+      return const SizedBox.shrink();
+    }
 
     return GestureDetector(
       onTap: onTap,
@@ -665,6 +688,15 @@ class _MusicControlBar extends ConsumerWidget {
                           } else {
                             player.play();
                           }
+                        } else {
+                          ref
+                              .read(playingListSnapshotProvider.notifier)
+                              .setIndex(
+                                ref
+                                    .read(playingListSnapshotProvider)
+                                    .requireValue
+                                    .curIndex,
+                              );
                         }
                       },
                     ),
@@ -686,7 +718,7 @@ class _MusicControlBar extends ConsumerWidget {
                   IconButton(
                     icon: const Icon(Icons.skip_next, size: 32),
                     onPressed: () {
-                      ref.read(currentPlayingIndexProvider.notifier).playNext();
+                      ref.read(playingListSnapshotProvider.notifier).playNext();
                     },
                   ),
                 ],

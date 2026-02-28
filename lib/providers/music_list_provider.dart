@@ -1,12 +1,17 @@
+import 'dart:convert';
+
+import 'package:busic/models/playing_list.dart';
 import 'package:busic/models/user_pref.dart';
 import 'package:busic/network/fetch_fav_list.dart';
 import 'package:busic/network/fetch_sea_list.dart';
+import 'package:busic/providers/storage_provider.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../models/music_list_item.dart';
 import 'music_database.dart';
 import 'audio_player_provider.dart';
 import 'pref_provider.dart';
 import 'dart:math';
+import 'package:flutter_riverpod/experimental/persist.dart';
 
 class MusicListState {
   List<MusicListItemBv> list;
@@ -149,59 +154,82 @@ final musicListProvider =
     );
 
 // 播放列表快照 Notifier（用于保存点击播放时的列表副本）
-class PlayingListSnapshotNotifier extends Notifier<List<MusicListItemBv>> {
+class PlayingListSnapshotNotifier extends AsyncNotifier<PlayingList> {
+  static final StoreKey = 'PlayingListSnapshot1335';
+
   @override
-  List<MusicListItemBv> build() {
-    return [];
+  Future<PlayingList> build() async {
+    await persist(
+      ref.watch(storageProvider.future),
+      key: StoreKey,
+      encode: (state) => jsonEncode(state.toJson()),
+      decode: (encoded) {
+        final ret = PlayingList.fromJson(jsonDecode(encoded));
+        if (ret.curIndex != null) {
+          if (ret.curIndex! <= 0 || ret.curIndex! >= ret.curList.length) {
+            ret.curIndex = null;
+          }
+        }
+        return ret;
+      },
+    ).future;
+
+    return state.value ?? PlayingList(curIndex: null, curList: []);
   }
 
   void setSnapshot(List<MusicListItemBv> list) {
     // 创建列表的深拷贝
-    state = List.from(list);
+    state = AsyncData(state.requireValue.copyWith(curList: List.from(list)));
   }
 
   void clear() {
-    state = [];
-  }
-}
-
-// 播放列表快照 Provider
-final playingListSnapshotProvider =
-    NotifierProvider<PlayingListSnapshotNotifier, List<MusicListItemBv>>(
-      PlayingListSnapshotNotifier.new,
-    );
-
-class CurrentPlayingIndexNotifier extends Notifier<int?> {
-  @override
-  int? build() {
-    return null;
+    state = AsyncData(PlayingList(curIndex: null, curList: []));
   }
 
-  void setIndex(int? i) async {
-    if (stateOrNull == i) {
-      ref.read(audioPlayerManagerProvider)?.seek(null);
+  void setIndex(int? i, {List<MusicListItemBv>? musicListSnap}) async {
+    final p = ref.read(audioPlayerManagerProvider);
+    if (state.value?.curIndex == i && p != null) {
+      p.seek(null);
       return;
     }
 
-    state = i;
+    state = AsyncData(state.requireValue.copyWith(curIndex: i));
     ref.read(audioPlayerManagerProvider.notifier).setPlayer(null);
 
-    final musicListAsync = ref.read(musicListProvider);
-    musicListAsync.whenData((musicList) async {
+    if (musicListSnap != null) {
       // 保存当前列表的快照
-      ref.read(playingListSnapshotProvider.notifier).setSnapshot(musicList);
+      setSnapshot(musicListSnap);
+    }
+    final list = state.requireValue.curList;
 
-      ref
-          .read(audioPlayerManagerProvider.notifier)
-          .setPlayer(await musicList[i!].generatePlayer());
-    });
+    ref
+        .read(audioPlayerManagerProvider.notifier)
+        .setPlayer(await list[i!].generatePlayer());
+  }
+
+  String? getCurId() {
+    final list = state.value?.curList;
+
+    final i = state.value?.curIndex;
+    if (list == null || i == null) {
+      return null;
+    }
+
+    return list[i].id;
+  }
+
+  MusicListItemBv? getCurMusic() {
+    final v = state.value;
+    if (v == null || v.curIndex == null) return null;
+    return v.curList[v.curIndex!];
   }
 
   // 播放下一首
   void playNext() {
     // 使用播放列表快照而不是实时列表
-    final playingList = ref.read(playingListSnapshotProvider);
-    final currentIndex = state;
+    final playingList = state.requireValue.curList;
+    final currentIndex = state.requireValue.curIndex!;
+    assert(currentIndex != null);
     final playMode = ref.read(playModeNotifierProvider);
 
     if (playingList.isEmpty) {
@@ -221,11 +249,7 @@ class CurrentPlayingIndexNotifier extends Notifier<int?> {
       } while (nextIndex == currentIndex && listLength > 1);
     } else {
       // 顺序播放模式
-      if (currentIndex == null) {
-        nextIndex = 0;
-      } else {
-        nextIndex = (currentIndex + 1) % listLength;
-      }
+      nextIndex = (currentIndex + 1) % listLength;
     }
 
     setIndex(nextIndex);
@@ -234,8 +258,9 @@ class CurrentPlayingIndexNotifier extends Notifier<int?> {
   // 播放上一首
   void playPrevious() {
     // 使用播放列表快照而不是实时列表
-    final playingList = ref.read(playingListSnapshotProvider);
-    final currentIndex = state;
+    final playingList = state.requireValue.curList;
+    final currentIndex = state.requireValue.curIndex!;
+    assert(currentIndex != null);
     final playMode = ref.read(playModeNotifierProvider);
 
     if (playingList.isEmpty) {
@@ -255,20 +280,17 @@ class CurrentPlayingIndexNotifier extends Notifier<int?> {
       } while (prevIndex == currentIndex && listLength > 1);
     } else {
       // 顺序播放模式
-      if (currentIndex == null) {
-        prevIndex = 0;
-      } else {
-        prevIndex = (currentIndex - 1 + listLength) % listLength;
-      }
+      prevIndex = (currentIndex - 1 + listLength) % listLength;
     }
 
     setIndex(prevIndex);
   }
 }
 
-final currentPlayingIndexProvider =
-    NotifierProvider<CurrentPlayingIndexNotifier, int?>(
-      CurrentPlayingIndexNotifier.new,
+// 播放列表快照 Provider
+final playingListSnapshotProvider =
+    AsyncNotifierProvider<PlayingListSnapshotNotifier, PlayingList>(
+      PlayingListSnapshotNotifier.new,
     );
 
 // 切换播放模式

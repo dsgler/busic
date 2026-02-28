@@ -83,10 +83,15 @@ class MusicListItemBv {
       join(
         (await getApplicationCacheDirectory()).path,
         'music_cache',
-        '$bvid-$cid.m4s',
+        '$id.m4s',
       ),
     );
   }
+
+  String get id =>
+      '$bvid'
+      '_'
+      '$cid';
 
   Future<AudioPlayer> generatePlayer() async {
     final player = AudioPlayer();
