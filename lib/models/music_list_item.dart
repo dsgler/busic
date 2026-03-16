@@ -1,10 +1,8 @@
 import 'dart:io';
 
 import 'package:busic/consts/network.dart';
-import 'package:busic/models/user_pref.dart';
 import 'package:busic/network/video_info.dart';
 import 'package:busic/network/video_url.dart';
-import 'package:json_annotation/json_annotation.dart';
 import 'package:path/path.dart';
 import 'package:path_provider/path_provider.dart';
 import 'video_url_ret.dart';
@@ -12,7 +10,6 @@ import 'package:just_audio/just_audio.dart';
 
 part 'music_list_item.g.dart';
 
-@JsonSerializable()
 class MusicListItemBv {
   final String bvid;
   final int cid;
@@ -20,7 +17,8 @@ class MusicListItemBv {
   final String subTitle;
   final String artist;
   final String? coverUrl;
-  final MusicListMode category;
+  /// 复合 key，如 "default", "favList:123456", "seasonsArchives:789"
+  final String categoryKey;
   Audio? _audioObj;
   int fetchAudioTime;
 
@@ -44,7 +42,7 @@ class MusicListItemBv {
     this.artist = '未知艺术家',
     this.subTitle = '',
     this.coverUrl,
-    this.category = MusicListMode.defaultMode,
+    this.categoryKey = 'default',
     Audio? audioObj,
     this.fetchAudioTime = 0,
   }) : _audioObj = audioObj;
@@ -52,7 +50,7 @@ class MusicListItemBv {
   static Future<List<MusicListItemBv>> fetchBv({
     required String bvid,
     int cid = 0,
-    MusicListMode mode = MusicListMode.defaultMode,
+    String categoryKey = 'default',
   }) async {
     final info = await getVideoInfo(bvid: bvid);
 
@@ -64,7 +62,7 @@ class MusicListItemBv {
             cid: p.cid,
             coverUrl: p.firstFrame,
             artist: info.data.owner.name,
-            category: mode,
+            categoryKey: categoryKey,
             subTitle: p.pagePart,
           ),
         )

@@ -4,7 +4,6 @@ import 'package:drift/native.dart';
 import 'package:path_provider/path_provider.dart';
 import 'package:path/path.dart' as p;
 import '../models/music_list_item.dart';
-import '../models/user_pref.dart';
 
 part 'music_database.g.dart';
 
@@ -17,6 +16,7 @@ class MusicItems extends Table {
   TextColumn get subTitle => text()();
   TextColumn get artist => text()();
   TextColumn get coverUrl => text().nullable()();
+  /// 复合 key，如 "default", "favList:123456", "seasonsArchives:789"
   TextColumn get category => text().withDefault(const Constant('default'))();
 }
 
@@ -26,7 +26,7 @@ class MusicDatabase extends _$MusicDatabase {
   MusicDatabase() : super(_openConnection());
 
   @override
-  int get schemaVersion => 5;
+  int get schemaVersion => 6;
 
   @override
   MigrationStrategy get migration {
@@ -43,27 +43,26 @@ class MusicDatabase extends _$MusicDatabase {
     );
   }
 
-  /// 读取所有音乐项（可选按category过滤）
-  Future<List<MusicListItemBv>> getMusicList({MusicListMode? category}) async {
+  /// 读取所有音乐项（可选按 categoryKey 过滤）
+  Future<List<MusicListItemBv>> getMusicList({String? categoryKey}) async {
     final query = select(musicItems)..orderBy([(t) => OrderingTerm.asc(t.id)]);
 
-    if (category != null) {
-      query.where((tbl) => tbl.category.equals(category.jsonValue));
+    if (categoryKey != null) {
+      query.where((tbl) => tbl.category.equals(categoryKey));
     }
 
     final items = await query.get();
     return items.map((item) => _toMusicItem(item)).toList();
   }
 
-  /// 保存音乐列表（替换所有数据）
+  /// 保存音乐列表（替换指定 categoryKey 的所有数据）
   Future<void> saveMusicList(
     List<MusicListItemBv> musicList, {
-    MusicListMode? category,
+    String? categoryKey,
   }) async {
     await transaction(() async {
-      await deleteMusicList(category: category);
+      await deleteMusicList(categoryKey: categoryKey);
 
-      // 插入新数据
       await batch((batch) {
         batch.insertAll(
           musicItems,
@@ -73,12 +72,12 @@ class MusicDatabase extends _$MusicDatabase {
     });
   }
 
-  /// 删除所有音乐项
-  Future<void> deleteMusicList({MusicListMode? category}) async {
-    if (category != null) {
-      await (delete(
-        musicItems,
-      )..where((it) => it.category.equals(category.jsonValue))).go();
+  /// 删除音乐项（可选按 categoryKey 过滤）
+  Future<void> deleteMusicList({String? categoryKey}) async {
+    if (categoryKey != null) {
+      await (delete(musicItems)
+            ..where((it) => it.category.equals(categoryKey)))
+          .go();
     } else {
       await delete(musicItems).go();
     }
@@ -98,7 +97,7 @@ class MusicDatabase extends _$MusicDatabase {
       subTitle: item.subTitle,
       artist: item.artist,
       coverUrl: item.coverUrl,
-      category: MusicListMode.fromString(item.category),
+      categoryKey: item.category,
     );
   }
 
@@ -111,7 +110,7 @@ class MusicDatabase extends _$MusicDatabase {
       subTitle: music.subTitle,
       artist: music.artist,
       coverUrl: Value(music.coverUrl),
-      category: Value(music.category.jsonValue),
+      category: Value(music.categoryKey),
     );
   }
 
@@ -120,66 +119,57 @@ class MusicDatabase extends _$MusicDatabase {
     await into(musicItems).insert(_toCompanion(music));
   }
 
-  /// 删除单个音乐项（根据 ID）
+  /// 删除单个音乐项（根据数据库 ID）
   Future<void> deleteMusicItem(int id) async {
     await (delete(musicItems)..where((tbl) => tbl.id.equals(id))).go();
   }
 
-  /// 更新单个音乐项
-  Future<void> updateMusicItem(int id, MusicListItemBv music) async {
-    await (update(
-      musicItems,
-    )..where((tbl) => tbl.id.equals(id))).write(_toCompanion(music));
-  }
-
-  /// 根据类别获取音乐列表
+  /// 根据 categoryKey 获取音乐列表
   Future<List<MusicListItemBv>> getMusicListByCategory(
-    MusicListMode category,
+    String categoryKey,
   ) async {
     final items =
         await (select(musicItems)
-              ..where((tbl) => tbl.category.equals(category.jsonValue))
+              ..where((tbl) => tbl.category.equals(categoryKey))
               ..orderBy([(t) => OrderingTerm.asc(t.id)]))
             .get();
 
     return items.map((item) => _toMusicItem(item)).toList();
   }
 
-  /// 获取所有类别
-  Future<List<MusicListMode>> getCategories() async {
+  /// 获取所有 categoryKey 列表
+  Future<List<String>> getCategoryKeys() async {
     final query = selectOnly(musicItems, distinct: true)
       ..addColumns([musicItems.category]);
 
     final results = await query.get();
     return results
-        .map((row) => MusicListMode.fromString(row.read(musicItems.category)!))
+        .map((row) => row.read(musicItems.category)!)
         .toList();
   }
 
-  /// 删除指定分类的所有音乐项
-  Future<void> deleteMusicListByCategory(MusicListMode category) async {
-    await (delete(
-      musicItems,
-    )..where((tbl) => tbl.category.equals(category.jsonValue))).go();
+  /// 删除指定 categoryKey 的所有音乐项
+  Future<void> deleteMusicListByCategory(String categoryKey) async {
+    await (delete(musicItems)
+          ..where((tbl) => tbl.category.equals(categoryKey)))
+        .go();
   }
 
-  /// 模糊搜索音乐项（搜索title, subtitle, artist, bvid）
+  /// 模糊搜索音乐项（搜索 title, subtitle, artist, bvid）
   Future<List<MusicListItemBv>> searchMusicList(
     String keyword, {
-    MusicListMode? category,
+    String? categoryKey,
   }) async {
     if (keyword.isEmpty) {
-      return getMusicList(category: category);
+      return getMusicList(categoryKey: categoryKey);
     }
 
     final query = select(musicItems)..orderBy([(t) => OrderingTerm.asc(t.id)]);
 
-    // 按category过滤
-    if (category != null) {
-      query.where((tbl) => tbl.category.equals(category.jsonValue));
+    if (categoryKey != null) {
+      query.where((tbl) => tbl.category.equals(categoryKey));
     }
 
-    // 模糊搜索：title, subtitle, artist, bvid
     final searchPattern = '%$keyword%';
     query.where(
       (tbl) =>

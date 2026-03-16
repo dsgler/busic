@@ -1,7 +1,6 @@
 import 'dart:convert';
 
 import 'package:busic/models/playing_list.dart';
-import 'package:busic/models/user_pref.dart';
 import 'package:busic/network/fetch_fav_list.dart';
 import 'package:busic/network/fetch_sea_list.dart';
 import 'package:busic/providers/storage_provider.dart';
@@ -12,13 +11,6 @@ import 'audio_player_provider.dart';
 import 'pref_provider.dart';
 import 'dart:math';
 import 'package:flutter_riverpod/experimental/persist.dart';
-
-class MusicListState {
-  List<MusicListItemBv> list;
-  MusicListMode mode;
-
-  MusicListState({required this.list, this.mode = MusicListMode.defaultMode});
-}
 
 // 数据库实例 Provider
 final musicDatabaseProvider = Provider<MusicDatabase>((ref) {
@@ -33,118 +25,92 @@ class MusicListNotifier extends AsyncNotifier<List<MusicListItemBv>> {
   Future<List<MusicListItemBv>> build() async {
     final db = ref.watch(musicDatabaseProvider);
 
-    // 监听 UserPrefProvider，根据 musicListMode.jsonValue 过滤 category
     final userPrefAsync = ref.watch(UserPrefProvider);
-    final category = userPrefAsync.hasValue
-        ? userPrefAsync.requireValue.musicListMode
-        : MusicListMode.defaultMode;
+    final categoryKey = userPrefAsync.hasValue
+      ? userPrefAsync.requireValue.selectedPlaylistKey
+      : 'default';
 
-    return await db.getMusicList(category: category);
+    return await db.getMusicList(categoryKey: categoryKey);
   }
 
-  Future<void> syncFavList({void Function(int progress)? onProgress}) async {
-    final mid = ref.read(UserPrefProvider).requireValue.favListId;
-    if (mid == '') {
-      throw 'favListId 不能为空';
+  Future<void> syncFavList(
+    String listId, {
+    void Function(int progress)? onProgress,
+  }) async {
+    final categoryKey = 'favList:$listId';
+    final list = await fetchFavList(
+      listId,
+      categoryKey: categoryKey,
+      onProgress: onProgress,
+    );
+    await clearList(categoryKey: categoryKey);
+    for (var a in list) {
+      await addMusic(a);
     }
-
-    await fetchFavList(mid, onProgress: onProgress).then((list) async {
-      await clearList(category: MusicListMode.favList);
-      for (var a in list) {
-        addMusic(a);
-      }
-    });
   }
 
-  Future<void> syncSeaList({void Function(int progress)? onProgress}) async {
-    final mid = ref.read(UserPrefProvider).requireValue.seaListId;
-    if (mid == '') {
-      throw 'seaListId 不能为空';
+  Future<void> syncSeaList(
+    String listId, {
+    void Function(int progress)? onProgress,
+  }) async {
+    final categoryKey = 'seasonsArchives:$listId';
+    final list = await fetchSeaList(
+      listId,
+      categoryKey: categoryKey,
+      onProgress: onProgress,
+    );
+    await clearList(categoryKey: categoryKey);
+    for (var a in list) {
+      await addMusic(a);
     }
-
-    await fetchSeaList(mid, onProgress: onProgress).then((list) async {
-      await clearList(category: MusicListMode.seasonsArchives);
-      for (var a in list) {
-        addMusic(a);
-      }
-    });
   }
 
   // 添加音乐到列表
   Future<void> addMusic(MusicListItemBv music) async {
     final db = ref.read(musicDatabaseProvider);
     await db.addMusicItem(music);
-    // 刷新状态
     state = AsyncValue.data([...state.value!, music]);
   }
 
-  // 删除音乐（根据索引）
   Future<void> removeMusic(int index) async {
-    final userPrefAsync = ref.watch(UserPrefProvider);
-    final category = userPrefAsync.requireValue.musicListMode;
+    final categoryKey =
+      ref.read(UserPrefProvider).requireValue.selectedPlaylistKey;
     final currentList = state.value!;
     if (index < 0 || index >= currentList.length) return;
 
     final db = ref.read(musicDatabaseProvider);
-    // 重新保存整个列表（简单方式）
     final newList = [
       ...currentList.sublist(0, index),
       ...currentList.sublist(index + 1),
     ];
-    await db.saveMusicList(newList, category: category);
+    await db.saveMusicList(newList, categoryKey: categoryKey);
     state = AsyncValue.data(newList);
   }
 
-  // 删除音乐（根据索引）
+  // 删除音乐（根据 bvid + cid）
   Future<void> removeMusicByBvCid(String bvid, int cid) async {
-    final userPrefAsync = ref.watch(UserPrefProvider);
-    final category = userPrefAsync.requireValue.musicListMode;
+    final categoryKey =
+      ref.read(UserPrefProvider).requireValue.selectedPlaylistKey;
     final currentList = state.value!;
 
     final db = ref.read(musicDatabaseProvider);
-    // 重新保存整个列表（简单方式）
     final newList = currentList
         .where((e) => e.bvid != bvid || e.cid != cid)
         .toList();
-    await db.saveMusicList(newList, category: category);
+    await db.saveMusicList(newList, categoryKey: categoryKey);
     state = AsyncValue.data(newList);
   }
 
-  // 清空当前分类的列表
-  Future<void> clearList({MusicListMode? category}) async {
+  // 清空指定 categoryKey 的列表（默认为当前选中列表）
+  Future<void> clearList({String? categoryKey}) async {
     final db = ref.read(musicDatabaseProvider);
-    final userPrefAsync = ref.read(UserPrefProvider);
-    final currentCategory = userPrefAsync.requireValue.musicListMode;
-    category ??= currentCategory;
-
-    // 在数据库中删除当前分类的所有音乐
-    await db.deleteMusicListByCategory(category);
+    final key =
+      categoryKey ??
+      ref.read(UserPrefProvider).requireValue.selectedPlaylistKey;
+    await db.deleteMusicListByCategory(key);
     state = const AsyncValue.data([]);
   }
 
-  // 设置整个列表
-  Future<void> setList(
-    List<MusicListItemBv> list, {
-    MusicListMode? category,
-  }) async {
-    final db = ref.read(musicDatabaseProvider);
-    await db.saveMusicList(list, category: category);
-    state = AsyncValue.data(list);
-  }
-
-  // 根据类别获取音乐列表
-  Future<List<MusicListItemBv>> getMusicListByCategory(
-    MusicListMode category,
-  ) async {
-    final db = ref.read(musicDatabaseProvider);
-    return await db.getMusicListByCategory(category);
-  }
-
-  // 获取所有类别
-  Future<List<MusicListMode>> getCategories() async {
-    final db = ref.read(musicDatabaseProvider);
-    return await db.getCategories();
-  }
 }
 
 // 音乐列表 Provider
@@ -227,7 +193,6 @@ class PlayingListSnapshotNotifier extends AsyncNotifier<PlayingList> {
     // 使用播放列表快照而不是实时列表
     final playingList = state.requireValue.curList;
     final currentIndex = state.requireValue.curIndex!;
-    assert(currentIndex != null);
     final playMode = ref.read(playModeNotifierProvider);
 
     if (playingList.isEmpty) {
@@ -258,7 +223,6 @@ class PlayingListSnapshotNotifier extends AsyncNotifier<PlayingList> {
     // 使用播放列表快照而不是实时列表
     final playingList = state.requireValue.curList;
     final currentIndex = state.requireValue.curIndex!;
-    assert(currentIndex != null);
     final playMode = ref.read(playModeNotifierProvider);
 
     if (playingList.isEmpty) {

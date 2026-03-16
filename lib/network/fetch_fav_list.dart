@@ -1,11 +1,11 @@
 import 'package:busic/consts/network.dart';
 import 'package:busic/models/fav_list_ret.dart';
 import 'package:busic/models/music_list_item.dart';
-import 'package:busic/models/user_pref.dart';
 import 'package:busic/network/request.dart';
 
 Future<List<MusicListItemBv>> fetchFavList(
   String media_id, {
+    String categoryKey = 'favList',
   void Function(int progress)? onProgress,
 }) async {
   var curp = 1;
@@ -29,7 +29,7 @@ Future<List<MusicListItemBv>> fetchFavList(
             bvid: e.bvid,
             title: e.title,
             artist: e.upper.name,
-            category: MusicListMode.favList,
+            categoryKey: categoryKey,
             cid: e.ugc.firstCid,
             coverUrl: e.cover,
           ),
@@ -37,7 +37,7 @@ Future<List<MusicListItemBv>> fetchFavList(
       } else {
         final v = await MusicListItemBv.fetchBv(
           bvid: e.bvid,
-          mode: MusicListMode.favList,
+          categoryKey: categoryKey,
         );
         l.addAll(v);
       }

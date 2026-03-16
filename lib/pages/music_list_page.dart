@@ -1,16 +1,15 @@
+import 'package:busic/models/music_list_item.dart';
+import 'package:busic/models/playlist_entry.dart';
 import 'package:busic/models/user_pref.dart';
+import 'package:busic/pages/widgets/music_control_bar.dart';
+import 'package:busic/pages/widgets/music_list_section.dart';
+import 'package:busic/pages/widgets/music_playlist_drawer.dart';
+import 'package:busic/providers/music_list_provider.dart';
 import 'package:busic/providers/pref_provider.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
-import '../models/music_list_item.dart';
-import '../providers/music_list_provider.dart';
-import '../providers/audio_player_provider.dart';
+
 import 'play_page.dart';
-import 'settings_page.dart';
-import 'package:cached_network_image/cached_network_image.dart';
-import './BuildDrawerHeader.dart';
-import 'package:file_picker/file_picker.dart';
-import 'package:path/path.dart' as path;
 
 class MusicListPage extends ConsumerStatefulWidget {
   const MusicListPage({super.key});
@@ -32,115 +31,207 @@ class _MusicListPageState extends ConsumerState<MusicListPage> {
     super.dispose();
   }
 
+  void _onProgress(BuildContext context, int progress) {
+    ScaffoldMessenger.of(
+      context,
+    ).showSnackBar(SnackBar(content: Text('已加载第 $progress 页')));
+  }
+
+  Future<void> _onTapAddBv() async {
+    final controller = TextEditingController();
+    final result = await showDialog<String>(
+      context: context,
+      builder: (context) {
+        return AlertDialog(
+          title: const Text('请输入BV'),
+          content: TextField(
+            controller: controller,
+            autofocus: true,
+            decoration: const InputDecoration(hintText: '在这里输入'),
+          ),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.pop(context),
+              child: const Text('取消'),
+            ),
+            TextButton(
+              onPressed: () => Navigator.pop(context, controller.text.trim()),
+              child: const Text('确定'),
+            ),
+          ],
+        );
+      },
+    );
+
+    if (result == null || result.length < 2) return;
+    if (result[0].toLowerCase() == 'b' && result[1].toLowerCase() == 'v') {
+      final list = await MusicListItemBv.fetchBv(bvid: result);
+      for (final item in list) {
+        await ref.read(musicListProvider.notifier).addMusic(item);
+      }
+    }
+  }
+
+  Future<void> _onAddFavList() async {
+    final fidController = TextEditingController();
+    final fid = await showDialog<String>(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: const Text('请输入fid或收藏夹链接'),
+        content: TextField(
+          controller: fidController,
+          autofocus: true,
+          decoration: const InputDecoration(hintText: '在这里输入'),
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(context),
+            child: const Text('取消'),
+          ),
+          TextButton(
+            onPressed: () => Navigator.pop(context, fidController.text.trim()),
+            child: const Text('确定'),
+          ),
+        ],
+      ),
+    );
+    if (fid == null || fid.isEmpty) return;
+
+    String id;
+    var re = RegExp(r'fid=(\d+)');
+    var m = re.firstMatch(fid);
+    if (m != null) {
+      id = m[1]!;
+    } else {
+      re = RegExp(r'^\d+$');
+      if (!re.hasMatch(fid)) {
+        if (mounted) {
+          ScaffoldMessenger.of(context)
+              .showSnackBar(const SnackBar(content: Text('无法识别fid')));
+        }
+        return;
+      }
+      id = fid;
+    }
+
+    if (!mounted) return;
+    final nameController = TextEditingController(text: id);
+    final name = await showDialog<String>(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: const Text('请输入收藏夹名称'),
+        content: TextField(
+          controller: nameController,
+          autofocus: true,
+          decoration: const InputDecoration(hintText: '默认使用ID作为名称'),
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(context),
+            child: const Text('取消'),
+          ),
+          TextButton(
+            onPressed: () => Navigator.pop(context, nameController.text.trim()),
+            child: const Text('确定'),
+          ),
+        ],
+      ),
+    );
+    if (name == null) return;
+
+    ref.read(UserPrefProvider.notifier).addFavList(id, name.isEmpty ? id : name);
+    await ref.read(musicListProvider.notifier).syncFavList(
+      id,
+      onProgress: (p) => _onProgress(context, p),
+    );
+  }
+
+  Future<void> _onAddSeaList() async {
+    final idController = TextEditingController();
+    final rawId = await showDialog<String>(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: const Text('请输入season_id或合辑链接（纯数字）'),
+        content: TextField(
+          controller: idController,
+          autofocus: true,
+          decoration: const InputDecoration(hintText: '在这里输入'),
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(context),
+            child: const Text('取消'),
+          ),
+          TextButton(
+            onPressed: () => Navigator.pop(context, idController.text.trim()),
+            child: const Text('确定'),
+          ),
+        ],
+      ),
+    );
+    if (rawId == null || rawId.isEmpty) return;
+
+    String id;
+    final linkRe = RegExp(r'season_id[=:](\d+)');
+    final linkMatch = linkRe.firstMatch(rawId);
+    if (linkMatch != null) {
+      id = linkMatch[1]!;
+    } else {
+      final re = RegExp(r'^\d+$');
+      if (!re.hasMatch(rawId)) {
+        if (mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            const SnackBar(content: Text('无法识别season_id，请输入纯数字')),
+          );
+        }
+        return;
+      }
+      id = rawId;
+    }
+
+    if (!mounted) return;
+    final nameController = TextEditingController(text: id);
+    final name = await showDialog<String>(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: const Text('请输入合辑名称'),
+        content: TextField(
+          controller: nameController,
+          autofocus: true,
+          decoration: const InputDecoration(hintText: '默认使用ID作为名称'),
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(context),
+            child: const Text('取消'),
+          ),
+          TextButton(
+            onPressed: () => Navigator.pop(context, nameController.text.trim()),
+            child: const Text('确定'),
+          ),
+        ],
+      ),
+    );
+    if (name == null) return;
+
+    ref.read(UserPrefProvider.notifier).addSeaList(id, name.isEmpty ? id : name);
+    await ref.read(musicListProvider.notifier).syncSeaList(
+      id,
+      onProgress: (p) => _onProgress(context, p),
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
     final musicListAsync = ref.watch(musicListProvider);
-    // final currentPlayingIndex = ref.watch(currentPlayingIndexProvider).value;
-    final modeAsync = ref.watch(UserPrefProvider);
-    final mode = modeAsync.hasValue
-        ? modeAsync.requireValue.musicListMode
-        : MusicListMode.defaultMode;
-
-    void onProgress(int progress) {
-      ScaffoldMessenger.of(
-        context,
-      ).showSnackBar(SnackBar(content: Text('已加载第 $progress 页')));
-    }
-
-    void onTapAdd() async {
-      final controller = TextEditingController();
-
-      final result = await showDialog<String>(
-        context: context,
-        builder: (context) {
-          return AlertDialog(
-            title: Text(switch (mode) {
-              MusicListMode.defaultMode => '请输入BV',
-              MusicListMode.favList => '请输入fid或收藏夹链接',
-              MusicListMode.seasonsArchives => '请输入fid或合辑链接',
-            }),
-            content: TextField(
-              controller: controller,
-              autofocus: true,
-              decoration: const InputDecoration(hintText: '在这里输入'),
-            ),
-            actions: [
-              TextButton(
-                onPressed: () => Navigator.pop(context),
-                child: const Text('取消'),
-              ),
-              TextButton(
-                onPressed: () {
-                  Navigator.pop(context, controller.text);
-                },
-                child: const Text('确定'),
-              ),
-            ],
-          );
-        },
-      );
-
-      if (result != null) {
-        switch (mode) {
-          case MusicListMode.defaultMode:
-            {
-              if (result[0].toLowerCase() == 'b' &&
-                  result[1].toLowerCase() == 'v') {
-                MusicListItemBv.fetchBv(bvid: result).then((list) {
-                  for (var a in list) {
-                    ref.read(musicListProvider.notifier).addMusic(a);
-                  }
-                });
-              }
-            }
-          case MusicListMode.favList:
-            {
-              var re = RegExp(r'fid=(\d+)');
-              var m = re.firstMatch(result);
-              String mid;
-              if (m != null) {
-                mid = m[1]!;
-              } else {
-                re = RegExp(r'^\d+$');
-                m = re.firstMatch(result);
-                if (m == null) throw '无法识别fid';
-
-                mid = result;
-              }
-
-              ref.read(UserPrefProvider.notifier).setState((state) {
-                state.favListId = mid;
-              });
-
-              await ref
-                  .read(musicListProvider.notifier)
-                  .syncFavList(onProgress: onProgress);
-            }
-          case MusicListMode.seasonsArchives:
-            {
-              final re = RegExp(r'^\d+$');
-              final m = re.firstMatch(result);
-              if (m == null) throw '无法识别season_id,请输入纯数字';
-              ref.read(UserPrefProvider.notifier).setState((state) {
-                state.seaListId = result;
-              });
-
-              await ref
-                  .read(musicListProvider.notifier)
-                  .syncSeaList(onProgress: onProgress);
-            }
-        }
-      }
-    }
+    final prefAsync = ref.watch(UserPrefProvider);
+    final playlist = prefAsync.hasValue
+        ? prefAsync.requireValue.selectedPlaylist
+        : PlaylistEntry.defaultPlaylist();
 
     return Scaffold(
       appBar: AppBar(
-        title: Text(switch (mode) {
-          MusicListMode.defaultMode => '我的音乐',
-          MusicListMode.favList => '收藏夹',
-          MusicListMode.seasonsArchives => '视频合辑',
-        }),
-        // centerTitle: true,
+        title: Text(playlist.name),
         backgroundColor: Theme.of(context).colorScheme.inversePrimary,
         actions: [
           IconButton(
@@ -155,28 +246,22 @@ class _MusicListPageState extends ConsumerState<MusicListPage> {
               });
             },
           ),
-          if (mode == MusicListMode.defaultMode ||
-              (musicListAsync.hasValue && musicListAsync.requireValue.isEmpty))
-            IconButton(icon: const Icon(Icons.add), onPressed: onTapAdd)
-          else
+          if (playlist.type == MusicListMode.defaultMode)
+            IconButton(icon: const Icon(Icons.add), onPressed: _onTapAddBv),
+          if (playlist.type != MusicListMode.defaultMode)
             IconButton(
               icon: const Icon(Icons.sync),
               onPressed: () {
-                switch (mode) {
-                  case MusicListMode.favList:
-                    {
-                      ref
-                          .read(musicListProvider.notifier)
-                          .syncFavList(onProgress: onProgress);
-                    }
-                  case MusicListMode.seasonsArchives:
-                    {
-                      ref
-                          .read(musicListProvider.notifier)
-                          .syncSeaList(onProgress: onProgress);
-                    }
-                  case _:
-                    {}
+                if (playlist.type == MusicListMode.favList) {
+                  ref.read(musicListProvider.notifier).syncFavList(
+                        playlist.listId,
+                        onProgress: (p) => _onProgress(context, p),
+                      );
+                } else if (playlist.type == MusicListMode.seasonsArchives) {
+                  ref.read(musicListProvider.notifier).syncSeaList(
+                        playlist.listId,
+                        onProgress: (p) => _onProgress(context, p),
+                      );
                 }
               },
             ),
@@ -195,12 +280,12 @@ class _MusicListPageState extends ConsumerState<MusicListPage> {
                     ),
                     TextButton(
                       onPressed: () async {
-                        ref
+                        await ref
                             .read(musicListProvider.notifier)
-                            .clearList(category: mode);
-                        Navigator.pop(context);
+                            .clearList(categoryKey: playlist.key);
+                        if (ctx.mounted) Navigator.pop(ctx);
                       },
-                      child: Text('确定'),
+                      child: const Text('确定'),
                     ),
                   ],
                 ),
@@ -209,80 +294,13 @@ class _MusicListPageState extends ConsumerState<MusicListPage> {
           ),
         ],
       ),
-      drawer: Drawer(
-        child: ListView(
-          padding: EdgeInsets.zero,
-          children: [
-            BuildDrawerHeader(context, ref),
-            Divider(
-              color: Theme.of(context).colorScheme.outlineVariant,
-              height: 0.0,
-            ),
-            ListTile(
-              leading: const Icon(Icons.music_note),
-              title: const Text('默认列表'),
-              selected: mode == MusicListMode.defaultMode,
-              selectedTileColor: Theme.of(context).colorScheme.primaryContainer,
-              onTap: () {
-                ref
-                    .read(UserPrefProvider.notifier)
-                    .setMusicListMode(MusicListMode.defaultMode);
-                Navigator.pop(context);
-              },
-            ),
-            Divider(
-              color: Theme.of(context).colorScheme.outlineVariant,
-              height: 0.0,
-            ),
-            ListTile(
-              leading: const Icon(Icons.star),
-              title: const Text('收藏夹'),
-              selected: mode == MusicListMode.favList,
-              selectedTileColor: Theme.of(context).colorScheme.primaryContainer,
-              onTap: () {
-                ref
-                    .read(UserPrefProvider.notifier)
-                    .setMusicListMode(MusicListMode.favList);
-                Navigator.pop(context);
-              },
-            ),
-            Divider(
-              color: Theme.of(context).colorScheme.outlineVariant,
-              height: 0.0,
-            ),
-            ListTile(
-              leading: const Icon(Icons.collections_bookmark),
-              title: const Text('合辑'),
-              selected: mode == MusicListMode.seasonsArchives,
-              selectedTileColor: Theme.of(context).colorScheme.primaryContainer,
-              onTap: () {
-                ref
-                    .read(UserPrefProvider.notifier)
-                    .setMusicListMode(MusicListMode.seasonsArchives);
-                Navigator.pop(context);
-              },
-            ),
-            Divider(
-              color: Theme.of(context).colorScheme.outlineVariant,
-              height: 0.0,
-            ),
-            ListTile(
-              leading: const Icon(Icons.settings),
-              title: const Text('设置'),
-              onTap: () {
-                Navigator.pop(context);
-                Navigator.push(
-                  context,
-                  MaterialPageRoute(builder: (context) => const SettingsPage()),
-                );
-              },
-            ),
-          ],
-        ),
+      drawer: MusicPlaylistDrawer(
+        selectedPlaylist: playlist,
+        onAddFavList: _onAddFavList,
+        onAddSeaList: _onAddSeaList,
       ),
       body: Column(
         children: [
-          // 搜索框
           if (_showSearch)
             Padding(
               padding: const EdgeInsets.all(8.0),
@@ -318,18 +336,16 @@ class _MusicListPageState extends ConsumerState<MusicListPage> {
                 },
               ),
             ),
-          // 音乐列表
           Expanded(
-            child: MusicList(
+            child: MusicListSection(
               searchKeyword: _searchKeyword,
               scrollController: _listScrollController,
+              categoryKey: playlist.key,
             ),
           ),
-
-          // 底部音乐控制栏
           musicListAsync.when(
-            data: (musicList) {
-              return _MusicControlBar(
+            data: (_) {
+              return MusicControlBar(
                 onTap: () {
                   Navigator.push(
                     context,
@@ -341,7 +357,7 @@ class _MusicListPageState extends ConsumerState<MusicListPage> {
                             const begin = Offset(0.0, 1.0);
                             const end = Offset.zero;
                             const curve = Curves.easeInOut;
-                            var tween = Tween(
+                            final tween = Tween(
                               begin: begin,
                               end: end,
                             ).chain(CurveTween(curve: curve));
@@ -356,529 +372,10 @@ class _MusicListPageState extends ConsumerState<MusicListPage> {
               );
             },
             loading: () => const SizedBox.shrink(),
-            error: (_, _) => const SizedBox.shrink(),
+            error: (error, stack) => const SizedBox.shrink(),
           ),
         ],
       ),
     );
-  }
-}
-
-// 音乐列表 Widget
-class MusicList extends ConsumerWidget {
-  final String searchKeyword;
-  final ScrollController scrollController;
-
-  const MusicList({
-    super.key,
-    required this.searchKeyword,
-    required this.scrollController,
-  });
-
-  @override
-  Widget build(BuildContext context, WidgetRef ref) {
-    final musicListAsync = ref.watch(musicListProvider);
-    final modeAsync = ref.watch(UserPrefProvider);
-    final mode = modeAsync.hasValue
-        ? modeAsync.requireValue.musicListMode
-        : MusicListMode.defaultMode;
-
-    return FutureBuilder<List<MusicListItemBv>>(
-      future: searchKeyword.isEmpty
-          ? Future.value(musicListAsync.value ?? [])
-          : ref
-                .read(musicDatabaseProvider)
-                .searchMusicList(searchKeyword, category: mode),
-      builder: (context, snapshot) {
-        if (searchKeyword.isNotEmpty &&
-            snapshot.connectionState == ConnectionState.waiting) {
-          return const Center(child: CircularProgressIndicator());
-        }
-
-        final curMusicList = snapshot.data ?? musicListAsync.value ?? [];
-
-        return musicListAsync.when(
-          data: (_) => curMusicList.isEmpty
-              ? Center(
-                  child: Column(
-                    mainAxisAlignment: MainAxisAlignment.center,
-                    children: [
-                      Icon(
-                        searchKeyword.isEmpty
-                            ? Icons.music_note_outlined
-                            : Icons.search_off,
-                        size: 80,
-                        color: Colors.grey[400],
-                      ),
-                      const SizedBox(height: 16),
-                      Text(
-                        searchKeyword.isEmpty ? '暂无音乐' : '未找到匹配的音乐',
-                        style: TextStyle(fontSize: 18, color: Colors.grey[600]),
-                      ),
-                    ],
-                  ),
-                )
-              : Padding(
-                  padding: const EdgeInsets.only(right: 8),
-                  child: Scrollbar(
-                    interactive: true,
-                    thickness: 6,
-                    controller: scrollController,
-                    child: ListView.builder(
-                      controller: scrollController,
-                      itemCount: curMusicList.length,
-                      itemBuilder: (context, index) {
-                        final music = curMusicList[index];
-
-                        return MusicTile(
-                          music: music,
-                          originalIndex: index,
-                          curList: curMusicList,
-                        );
-                      },
-                    ),
-                  ),
-                ),
-          loading: () => const Center(child: CircularProgressIndicator()),
-          error: (error, stack) => Center(
-            child: Column(
-              mainAxisAlignment: MainAxisAlignment.center,
-              children: [
-                const Icon(Icons.error_outline, size: 60, color: Colors.red),
-                const SizedBox(height: 16),
-                Text('加载失败: $error'),
-              ],
-            ),
-          ),
-        );
-      },
-    );
-  }
-}
-
-// 音乐列表项 Widget
-class MusicTile extends ConsumerWidget {
-  final MusicListItemBv music;
-  final int originalIndex;
-  final List<MusicListItemBv> curList;
-
-  const MusicTile({
-    super.key,
-    required this.music,
-    required this.originalIndex,
-    required this.curList,
-  });
-
-  @override
-  Widget build(BuildContext context, WidgetRef ref) {
-    ref.watch(playingListSnapshotProvider);
-    final isCurrentPlaying =
-        ref.watch(playingListSnapshotProvider.notifier).getCurId() == music.id;
-    final playingState = ref.watch(playingStateProvider);
-    final modeAsync = ref.watch(UserPrefProvider);
-    final mode = modeAsync.hasValue
-        ? modeAsync.requireValue.musicListMode
-        : MusicListMode.defaultMode;
-
-    return ListTile(
-      tileColor: isCurrentPlaying
-          ? Theme.of(context).colorScheme.surfaceContainerHighest
-          : null,
-      leading: Container(
-        width: 50,
-        height: 50,
-        decoration: BoxDecoration(
-          color: Colors.grey[300],
-          borderRadius: BorderRadius.circular(8),
-        ),
-        child: music.coverUrl != null
-            ? ClipRRect(
-                borderRadius: BorderRadius.circular(8),
-                child: CachedNetworkImage(
-                  imageUrl: music.coverUrl!,
-                  fit: BoxFit.cover,
-                  errorWidget: (context, error, stackTrace) {
-                    return Icon(Icons.music_note, color: Colors.grey[600]);
-                  },
-                ),
-              )
-            : Icon(Icons.music_note, color: Colors.grey[600]),
-      ),
-      title: Text(
-        music.displayTitle,
-        style: TextStyle(
-          color: isCurrentPlaying
-              ? Theme.of(context).colorScheme.primary
-              : null,
-          fontWeight: isCurrentPlaying ? FontWeight.bold : null,
-        ),
-        maxLines: 2,
-      ),
-      subtitle: Text(music.displaySubTitle, maxLines: 2),
-      trailing: isCurrentPlaying
-          ? playingState.when(
-              data: (isPlaying) => Icon(
-                isPlaying ? Icons.volume_up : Icons.pause,
-                color: Theme.of(context).colorScheme.primary,
-              ),
-              loading: () => const SizedBox(
-                width: 20,
-                height: 20,
-                child: CircularProgressIndicator(strokeWidth: 2),
-              ),
-              error: (_, _) => const Icon(Icons.error),
-            )
-          : null,
-      onTap: () async {
-        if (isCurrentPlaying) {
-          return;
-        }
-
-        // 设置当前播放的音乐索引
-        ref
-            .read(playingListSnapshotProvider.notifier)
-            .setIndex(originalIndex, musicListSnap: curList);
-      },
-      onLongPress: () async {
-        await _showMusicMenu(context, ref, music, mode);
-      },
-    );
-  }
-}
-
-// 底部音乐控制栏
-class _MusicControlBar extends ConsumerWidget {
-  final VoidCallback onTap;
-
-  const _MusicControlBar({required this.onTap});
-
-  @override
-  Widget build(BuildContext context, WidgetRef ref) {
-    final player = ref.watch(audioPlayerManagerProvider);
-    final playingState = ref.watch(playingStateProvider);
-    final position = ref.watch(positionProvider);
-    final duration = ref.watch(durationProvider);
-    ref.watch(playingListSnapshotProvider);
-    final music = ref.watch(playingListSnapshotProvider.notifier).getCurMusic();
-    if (music == null) {
-      return const SizedBox.shrink();
-    }
-
-    return GestureDetector(
-      onTap: onTap,
-      child: Container(
-        decoration: BoxDecoration(
-          color: Theme.of(context).colorScheme.surfaceContainerHighest,
-          boxShadow: [
-            BoxShadow(
-              color: Colors.black.withValues(alpha: 0.1),
-              blurRadius: 10,
-              offset: const Offset(0, -2),
-            ),
-          ],
-        ),
-        child: Column(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            // 进度条
-            position.when(
-              data: (pos) {
-                return duration.when(
-                  data: (dur) {
-                    final progress = dur != null && dur.inMilliseconds > 0
-                        ? pos.inMilliseconds / dur.inMilliseconds
-                        : 0.0;
-                    return LinearProgressIndicator(
-                      value: progress,
-                      minHeight: 2,
-                      backgroundColor: Colors.grey[300],
-                    );
-                  },
-                  loading: () =>
-                      const LinearProgressIndicator(minHeight: 2, value: 0),
-                  error: (_, _) => const SizedBox(height: 2),
-                );
-              },
-              loading: () => const LinearProgressIndicator(minHeight: 2),
-              error: (_, _) => const SizedBox(height: 2),
-            ),
-
-            // 控制栏内容
-            Padding(
-              padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
-              child: Row(
-                children: [
-                  // 封面
-                  Container(
-                    width: 48,
-                    height: 48,
-                    decoration: BoxDecoration(
-                      color: Colors.grey[300],
-                      borderRadius: BorderRadius.circular(8),
-                    ),
-                    child: music.coverUrl != null
-                        ? ClipRRect(
-                            borderRadius: BorderRadius.circular(8),
-                            child: CachedNetworkImage(
-                              imageUrl: music.coverUrl!,
-                              fit: BoxFit.cover,
-                              errorWidget: (context, error, stackTrace) {
-                                return Icon(
-                                  Icons.music_note,
-                                  color: Colors.grey[600],
-                                );
-                              },
-                            ),
-                          )
-                        : Icon(Icons.music_note, color: Colors.grey[600]),
-                  ),
-                  const SizedBox(width: 12),
-
-                  // 音乐信息
-                  Expanded(
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      mainAxisSize: MainAxisSize.min,
-                      children: [
-                        Text(
-                          music.displayTitle,
-                          style: const TextStyle(
-                            fontWeight: FontWeight.bold,
-                            fontSize: 14,
-                          ),
-                          maxLines: 1,
-                          overflow: TextOverflow.ellipsis,
-                        ),
-                        const SizedBox(height: 2),
-                        Text(
-                          music.displaySubTitle,
-                          style: TextStyle(
-                            fontSize: 12,
-                            color: Colors.grey[600],
-                          ),
-                          maxLines: 1,
-                          overflow: TextOverflow.ellipsis,
-                        ),
-                      ],
-                    ),
-                  ),
-
-                  // 播放/暂停按钮
-                  playingState.when(
-                    data: (isPlaying) => IconButton(
-                      icon: Icon(
-                        isPlaying ? Icons.pause : Icons.play_arrow,
-                        size: 32,
-                      ),
-                      onPressed: () {
-                        if (player != null) {
-                          if (isPlaying) {
-                            player.pause();
-                          } else {
-                            player.play();
-                          }
-                        } else {
-                          ref
-                              .read(playingListSnapshotProvider.notifier)
-                              .setIndex(
-                                ref
-                                    .read(playingListSnapshotProvider)
-                                    .requireValue
-                                    .curIndex,
-                              );
-                        }
-                      },
-                    ),
-                    loading: () => const Padding(
-                      padding: EdgeInsets.all(8.0),
-                      child: SizedBox(
-                        width: 32,
-                        height: 32,
-                        child: CircularProgressIndicator(strokeWidth: 3),
-                      ),
-                    ),
-                    error: (_, _) => IconButton(
-                      icon: const Icon(Icons.error, size: 32),
-                      onPressed: null,
-                    ),
-                  ),
-
-                  // 下一首按钮
-                  IconButton(
-                    icon: const Icon(Icons.skip_next, size: 32),
-                    onPressed: () {
-                      ref.read(playingListSnapshotProvider.notifier).playNext();
-                    },
-                  ),
-                ],
-              ),
-            ),
-          ],
-        ),
-      ),
-    );
-  }
-
-  /// 构建 Drawer Header
-}
-
-/// 显示音乐菜单
-Future<void> _showMusicMenu(
-  BuildContext context,
-  WidgetRef ref,
-  MusicListItemBv music,
-  MusicListMode mode,
-) async {
-  await showModalBottomSheet(
-    context: context,
-    builder: (context) {
-      return SafeArea(
-        child: Padding(
-          padding: const EdgeInsets.only(top: 8.0),
-          child: Column(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              if (mode == MusicListMode.defaultMode)
-                ListTile(
-                  leading: const Icon(Icons.delete),
-                  title: const Text('从列表中删除'),
-                  onTap: () async {
-                    Navigator.pop(context);
-
-                    ref
-                        .read(musicListProvider.notifier)
-                        .removeMusicByBvCid(music.bvid, music.cid);
-                  },
-                ),
-              ListTile(
-                leading: const Icon(Icons.save_alt),
-                title: const Text('将缓存保存到本地'),
-                onTap: () async {
-                  Navigator.pop(context);
-                  await _saveCacheToLocal(context, music);
-                },
-              ),
-              ListTile(
-                leading: const Icon(Icons.delete_forever),
-                title: const Text('删除缓存'),
-                onTap: () async {
-                  Navigator.pop(context);
-                  await _deleteCache(context, music);
-                },
-              ),
-            ],
-          ),
-        ),
-      );
-    },
-  );
-}
-
-/// 将缓存保存到本地
-Future<void> _saveCacheToLocal(
-  BuildContext context,
-  MusicListItemBv music,
-) async {
-  try {
-    // 获取缓存文件
-    final cacheFile = await music.getCacheFile();
-
-    // 检查缓存文件是否存在
-    if (!await cacheFile.exists()) {
-      if (context.mounted) {
-        ScaffoldMessenger.of(
-          context,
-        ).showSnackBar(const SnackBar(content: Text('缓存文件不存在，请先播放该音乐')));
-      }
-      return;
-    }
-
-    // 读取缓存文件的字节数据
-    final bytes = await cacheFile.readAsBytes();
-
-    // 使用 file_picker 选择保存位置
-    String? outputPath = await FilePicker.platform.saveFile(
-      dialogTitle: '保存音乐文件',
-      fileName: '${music.title.replaceAll(RegExp(r'[<>:"/\\|?*]'), '_')}.m4s',
-      type: FileType.audio,
-      bytes: bytes,
-    );
-
-    if (outputPath == null) {
-      // 用户取消了
-      return;
-    }
-
-    if (context.mounted) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text('已保存到 ${path.basename(outputPath)}')),
-      );
-    }
-  } catch (e) {
-    if (context.mounted) {
-      ScaffoldMessenger.of(
-        context,
-      ).showSnackBar(SnackBar(content: Text('保存失败: $e')));
-    }
-  }
-}
-
-/// 删除缓存
-Future<void> _deleteCache(BuildContext context, MusicListItemBv music) async {
-  try {
-    // 获取缓存文件
-    final cacheFile = await music.getCacheFile();
-
-    // 检查缓存文件是否存在
-    if (!await cacheFile.exists()) {
-      if (context.mounted) {
-        ScaffoldMessenger.of(
-          context,
-        ).showSnackBar(const SnackBar(content: Text('缓存文件不存在')));
-      }
-      return;
-    }
-
-    // 确认删除
-    final confirmed = context.mounted
-        ? await showDialog<bool>(
-            context: context,
-            builder: (context) {
-              return AlertDialog(
-                title: const Text('确认删除'),
-                content: const Text('确定要删除该音乐的缓存文件吗？'),
-                actions: [
-                  TextButton(
-                    onPressed: () => Navigator.pop(context, false),
-                    child: const Text('取消'),
-                  ),
-                  TextButton(
-                    onPressed: () => Navigator.pop(context, true),
-                    child: const Text('删除'),
-                  ),
-                ],
-              );
-            },
-          )
-        : false;
-
-    if (confirmed != true) {
-      return;
-    }
-
-    // 删除文件
-    await cacheFile.delete();
-
-    if (context.mounted) {
-      ScaffoldMessenger.of(
-        context,
-      ).showSnackBar(const SnackBar(content: Text('缓存已删除')));
-    }
-  } catch (e) {
-    if (context.mounted) {
-      ScaffoldMessenger.of(
-        context,
-      ).showSnackBar(SnackBar(content: Text('删除失败: $e')));
-    }
   }
 }

@@ -64,5 +64,7 @@ Future<void> initSampleMusicList(WidgetRef ref) async {
     ),
   ];
 
-  await ref.read(musicListProvider.notifier).setList(musicList);
+  for (final music in musicList) {
+    await ref.read(musicListProvider.notifier).addMusic(music);
+  }
 }

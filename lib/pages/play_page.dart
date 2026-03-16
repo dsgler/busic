@@ -57,7 +57,7 @@ class PlayPage extends ConsumerWidget {
                   borderRadius: BorderRadius.circular(20),
                   boxShadow: [
                     BoxShadow(
-                      color: Colors.black.withOpacity(0.2),
+                      color: Colors.black.withValues(alpha: 0.2),
                       blurRadius: 20,
                       offset: const Offset(0, 10),
                     ),
@@ -215,7 +215,7 @@ class PlayPage extends ConsumerWidget {
                       BoxShadow(
                         color: Theme.of(
                           context,
-                        ).colorScheme.primary.withOpacity(0.4),
+                        ).colorScheme.primary.withValues(alpha: 0.4),
                         blurRadius: 15,
                         offset: const Offset(0, 5),
                       ),

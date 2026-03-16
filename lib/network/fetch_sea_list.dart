@@ -1,11 +1,11 @@
 import 'package:busic/consts/network.dart';
 import 'package:busic/models/music_list_item.dart';
 import 'package:busic/models/seasons_archives_list_ret.dart';
-import 'package:busic/models/user_pref.dart';
 import 'package:busic/network/request.dart';
 
 Future<List<MusicListItemBv>> fetchSeaList(
   String season_id, {
+    String categoryKey = 'seasonsArchives',
   void Function(int progress)? onProgress,
 }) async {
   var curp = 1;
@@ -29,7 +29,7 @@ Future<List<MusicListItemBv>> fetchSeaList(
     for (final e in r.data.archives) {
       final v = await MusicListItemBv.fetchBv(
         bvid: e.bvid,
-        mode: MusicListMode.seasonsArchives,
+        categoryKey: categoryKey,
       );
       l.addAll(v);
     }

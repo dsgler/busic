@@ -53,7 +53,7 @@ Widget BuildDrawerHeader(BuildContext context, WidgetRef ref) {
       style: TextStyle(
         color: Theme.of(
           context,
-        ).colorScheme.onPrimaryContainer.withOpacity(0.8),
+        ).colorScheme.onPrimaryContainer.withValues(alpha: 0.8),
         fontSize: 14,
       ),
     ),

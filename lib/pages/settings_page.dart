@@ -51,7 +51,7 @@ class _SettingsPageState extends ConsumerState<SettingsPage> {
               leading: Container(
                 padding: const EdgeInsets.all(8),
                 decoration: BoxDecoration(
-                  color: Theme.of(context).primaryColor.withOpacity(0.1),
+                  color: Theme.of(context).primaryColor.withValues(alpha: 0.1),
                   borderRadius: BorderRadius.circular(8),
                 ),
                 child: Icon(
@@ -75,7 +75,7 @@ class _SettingsPageState extends ConsumerState<SettingsPage> {
               leading: Container(
                 padding: const EdgeInsets.all(8),
                 decoration: BoxDecoration(
-                  color: themeNotifier.getSeedColor().withOpacity(0.1),
+                  color: themeNotifier.getSeedColor().withValues(alpha: 0.1),
                   borderRadius: BorderRadius.circular(8),
                 ),
                 child: Icon(Icons.palette, color: themeNotifier.getSeedColor()),
@@ -104,7 +104,7 @@ class _SettingsPageState extends ConsumerState<SettingsPage> {
               leading: Container(
                 padding: const EdgeInsets.all(8),
                 decoration: BoxDecoration(
-                  color: Colors.blue.withOpacity(0.1),
+                  color: Colors.blue.withValues(alpha: 0.1),
                   borderRadius: BorderRadius.circular(8),
                 ),
                 child: const Icon(Icons.image, color: Colors.blue),
@@ -121,7 +121,7 @@ class _SettingsPageState extends ConsumerState<SettingsPage> {
               leading: Container(
                 padding: const EdgeInsets.all(8),
                 decoration: BoxDecoration(
-                  color: Colors.green.withOpacity(0.1),
+                  color: Colors.green.withValues(alpha: 0.1),
                   borderRadius: BorderRadius.circular(8),
                 ),
                 child: const Icon(Icons.music_note, color: Colors.green),
@@ -138,7 +138,7 @@ class _SettingsPageState extends ConsumerState<SettingsPage> {
               leading: Container(
                 padding: const EdgeInsets.all(8),
                 decoration: BoxDecoration(
-                  color: Colors.red.withOpacity(0.1),
+                  color: Colors.red.withValues(alpha: 0.1),
                   borderRadius: BorderRadius.circular(8),
                 ),
                 child: const Icon(Icons.delete_sweep, color: Colors.red),
@@ -493,16 +493,17 @@ class _SettingsPageState extends ConsumerState<SettingsPage> {
           content: Column(
             mainAxisSize: MainAxisSize.min,
             children: AppThemeMode.values.map((mode) {
-              return RadioListTile<AppThemeMode>(
+              return ListTile(
                 title: Text(getThemeModeName(mode)),
                 subtitle: Text(_getThemeModeDescription(mode)),
-                value: mode,
-                groupValue: currentMode,
-                onChanged: (value) {
-                  if (value != null) {
-                    ref.read(themeConfigProvider.notifier).setThemeMode(value);
-                    Navigator.pop(context);
-                  }
+                leading: Icon(
+                  mode == currentMode
+                      ? Icons.radio_button_checked
+                      : Icons.radio_button_unchecked,
+                ),
+                onTap: () {
+                  ref.read(themeConfigProvider.notifier).setThemeMode(mode);
+                  Navigator.pop(context);
                 },
               );
             }).toList(),
@@ -548,7 +549,7 @@ class _SettingsPageState extends ConsumerState<SettingsPage> {
                     border: Border.all(
                       color: isSelected
                           ? colorValue
-                          : Colors.grey.withOpacity(0.3),
+                          : Colors.grey.withValues(alpha: 0.3),
                       width: isSelected ? 3 : 1,
                     ),
                     borderRadius: BorderRadius.circular(12),
