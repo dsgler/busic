@@ -27,8 +27,8 @@ class MusicListNotifier extends AsyncNotifier<List<MusicListItemBv>> {
 
     final userPrefAsync = ref.watch(UserPrefProvider);
     final categoryKey = userPrefAsync.hasValue
-      ? userPrefAsync.requireValue.selectedPlaylistKey
-      : 'default';
+        ? userPrefAsync.requireValue.selectedPlaylistKey
+        : 'default';
 
     return await db.getMusicList(categoryKey: categoryKey);
   }
@@ -73,8 +73,10 @@ class MusicListNotifier extends AsyncNotifier<List<MusicListItemBv>> {
   }
 
   Future<void> removeMusic(int index) async {
-    final categoryKey =
-      ref.read(UserPrefProvider).requireValue.selectedPlaylistKey;
+    final categoryKey = ref
+        .read(UserPrefProvider)
+        .requireValue
+        .selectedPlaylistKey;
     final currentList = state.value!;
     if (index < 0 || index >= currentList.length) return;
 
@@ -89,8 +91,10 @@ class MusicListNotifier extends AsyncNotifier<List<MusicListItemBv>> {
 
   // 删除音乐（根据 bvid + cid）
   Future<void> removeMusicByBvCid(String bvid, int cid) async {
-    final categoryKey =
-      ref.read(UserPrefProvider).requireValue.selectedPlaylistKey;
+    final categoryKey = ref
+        .read(UserPrefProvider)
+        .requireValue
+        .selectedPlaylistKey;
     final currentList = state.value!;
 
     final db = ref.read(musicDatabaseProvider);
@@ -105,12 +109,11 @@ class MusicListNotifier extends AsyncNotifier<List<MusicListItemBv>> {
   Future<void> clearList({String? categoryKey}) async {
     final db = ref.read(musicDatabaseProvider);
     final key =
-      categoryKey ??
-      ref.read(UserPrefProvider).requireValue.selectedPlaylistKey;
+        categoryKey ??
+        ref.read(UserPrefProvider).requireValue.selectedPlaylistKey;
     await db.deleteMusicListByCategory(key);
     state = const AsyncValue.data([]);
   }
-
 }
 
 // 音乐列表 Provider
@@ -138,6 +141,10 @@ class PlayingListSnapshotNotifier extends AsyncNotifier<PlayingList> {
         }
         return ret;
       },
+      options: const StorageOptions(
+        // Instead of "unsafe_forever", you can alternatively specify a Duration.
+        cacheTime: StorageCacheTime.unsafe_forever,
+      ),
     ).future;
 
     return state.value ?? PlayingList(curIndex: null, curList: []);

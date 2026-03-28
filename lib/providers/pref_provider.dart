@@ -17,6 +17,10 @@ class UserPrefNotifier extends AsyncNotifier<UserPref> {
       key: prefStoreKey,
       encode: (state) => state.toRawJson(),
       decode: (encoded) => UserPref.fromRawJson(encoded),
+      options: const StorageOptions(
+        // Instead of "unsafe_forever", you can alternatively specify a Duration.
+        cacheTime: StorageCacheTime.unsafe_forever,
+      ),
     ).future;
 
     return state.hasValue ? state.requireValue : UserPref();
@@ -46,10 +50,7 @@ class UserPrefNotifier extends AsyncNotifier<UserPref> {
         .read(playingListSnapshotProvider.notifier)
         .setIndex(null, musicListSnap: []);
     state = AsyncData(
-      current.copyWith(
-        favLists: newFavLists,
-        selectedPlaylistKey: entry.key,
-      ),
+      current.copyWith(favLists: newFavLists, selectedPlaylistKey: entry.key),
     );
   }
 
@@ -68,10 +69,7 @@ class UserPrefNotifier extends AsyncNotifier<UserPref> {
         .read(playingListSnapshotProvider.notifier)
         .setIndex(null, musicListSnap: []);
     state = AsyncData(
-      current.copyWith(
-        seaLists: newSeaLists,
-        selectedPlaylistKey: entry.key,
-      ),
+      current.copyWith(seaLists: newSeaLists, selectedPlaylistKey: entry.key),
     );
   }
 
